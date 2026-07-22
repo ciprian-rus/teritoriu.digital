@@ -46,6 +46,7 @@ Valorile nu se introduc în repository, argumente CLI sau loguri. În GitHub se 
 
 - HTTPS, host și port allowlistate exact;
 - rezoluția DNS este verificată, iar conexiunea folosește adresa publică deja validată;
+- fiecare cerere folosește un agent fără pooling, cu timeoutul sursei aplicat explicit socketului;
 - fiecare redirect este revalidat;
 - maximum 5 MiB, 60 de secunde/încercare, maximum patru încercări;
 - retry numai pentru erori de rețea, timeout, `408`, `425`, `429` și `5xx`;

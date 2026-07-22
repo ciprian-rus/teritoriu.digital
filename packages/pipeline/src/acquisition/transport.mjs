@@ -62,6 +62,13 @@ async function readBody(response, maxBytes) {
 
 export function nodeTransport(url, options) {
   const client = url.protocol === "https:" ? https : http;
+  // Node's shared agent may impose a shorter socket timeout than the reviewed
+  // source policy. A one-request agent keeps the timeout boundary explicit and
+  // prevents a pooled socket from carrying state between validated targets.
+  const agent = new client.Agent({
+    keepAlive: false,
+    timeout: options.timeoutMs
+  });
   const startedAt = Date.now();
   const elapsedMs = () => Date.now() - startedAt;
   return new Promise((resolve, reject) => {
@@ -69,6 +76,7 @@ export function nodeTransport(url, options) {
       url,
       {
         method: "GET",
+        agent,
         headers: options.headers,
         lookup: safeLookup(options.resolvedAddresses),
         signal: options.signal
@@ -123,6 +131,7 @@ export function nodeTransport(url, options) {
         )
       );
     });
+    request.on("close", () => agent.destroy());
     request.end();
   });
 }
