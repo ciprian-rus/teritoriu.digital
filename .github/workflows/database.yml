@@ -5,6 +5,13 @@ on:
     paths:
       - "supabase/**"
       - ".github/workflows/database.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "supabase/**"
+      - ".github/workflows/database.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
