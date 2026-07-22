@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://teritoriu.digital/schemas/territory/1.0.0",
+  "title": "Teritoriu",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "territoryId",
+    "officialName",
+    "normalizedName",
+    "territoryType",
+    "administrativeLevel",
+    "status",
+    "validFrom",
+    "identifiers",
+    "provenance"
+  ],
+  "properties": {
+    "territoryId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Identificator intern persistent UUIDv7."
+    },
+    "officialName": { "type": "string", "minLength": 1 },
+    "normalizedName": { "type": "string", "minLength": 1 },
+    "shortName": { "type": ["string", "null"] },
+    "territoryType": {
+      "type": "string",
+      "enum": [
+        "country",
+        "macroregion",
+        "development_region",
+        "county",
+        "bucharest",
+        "sector",
+        "municipality",
+        "city",
+        "commune",
+        "component_locality",
+        "village",
+        "other"
+      ]
+    },
+    "administrativeLevel": { "type": "integer", "minimum": 0, "maximum": 9 },
+    "parentTerritoryId": { "type": ["string", "null"], "format": "uuid" },
+    "countyTerritoryId": { "type": ["string", "null"], "format": "uuid" },
+    "isUat": { "type": "boolean", "default": false },
+    "isLocality": { "type": "boolean", "default": false },
+    "isCountySeat": { "type": "boolean", "default": false },
+    "rank": { "type": ["integer", "null"] },
+    "status": { "type": "string", "enum": ["active", "inactive", "provisional"] },
+    "validFrom": { "type": ["string", "null"], "format": "date" },
+    "validTo": { "type": ["string", "null"], "format": "date" },
+    "identifiers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["scheme", "value", "status"],
+        "properties": {
+          "scheme": { "type": "string", "minLength": 1 },
+          "value": { "type": "string", "minLength": 1 },
+          "status": { "type": "string", "enum": ["active", "historical", "provisional"] },
+          "validFrom": { "type": ["string", "null"], "format": "date" },
+          "validTo": { "type": ["string", "null"], "format": "date" }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceSnapshotId", "sourceRecordHash"],
+      "properties": {
+        "sourceSnapshotId": { "type": "string", "format": "uuid" },
+        "sourceRecordHash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "transformationVersion": { "type": ["string", "null"] }
+      }
+    }
+  }
+}
+

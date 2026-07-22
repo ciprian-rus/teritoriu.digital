@@ -1,0 +1,32 @@
+name: Database
+
+on:
+  pull_request:
+    paths:
+      - "supabase/**"
+      - ".github/workflows/database.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: database-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Start local database
+        run: supabase db start
+      - name: Run pgTAP tests
+        run: supabase test db
+      - name: Lint database
+        run: supabase db lint --level warning

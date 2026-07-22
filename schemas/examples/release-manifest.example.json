@@ -1,0 +1,52 @@
+{
+  "releaseId": "2026.07.22.1",
+  "schemaVersion": "1.0.0",
+  "publishedAt": "2026-07-22T12:00:00Z",
+  "previousReleaseId": null,
+  "pipelineCommit": "0123456789abcdef0123456789abcdef01234567",
+  "sourceSnapshots": [
+    {
+      "source": "ro.ins.siruta",
+      "retrievedAt": "2026-07-22T09:00:00Z",
+      "sha256": "a073cd565f1c2be2de3fb59f4f131dfae8f0c3ecc858610206927fba89469a41",
+      "sizeBytes": 1158236,
+      "uri": "https://example.invalid/snapshots/siruta-2025.xlsx"
+    }
+  ],
+  "counts": {
+    "territories": 16978,
+    "counties": 42,
+    "uats": 3181,
+    "localities": 13755
+  },
+  "quality": {
+    "status": "passed_with_warnings",
+    "errors": 0,
+    "warnings": 77,
+    "reportArtifact": "validation-report.json"
+  },
+  "artifacts": [
+    {
+      "name": "territories.json",
+      "mediaType": "application/json",
+      "sizeBytes": 1,
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "uri": "https://example.invalid/releases/2026.07.22.1/territories.json"
+    },
+    {
+      "name": "territories.csv",
+      "mediaType": "text/csv",
+      "sizeBytes": 1,
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "uri": "https://example.invalid/releases/2026.07.22.1/territories.csv"
+    },
+    {
+      "name": "validation-report.json",
+      "mediaType": "application/json",
+      "sizeBytes": 1,
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "uri": "https://example.invalid/releases/2026.07.22.1/validation-report.json"
+    }
+  ]
+}
+
