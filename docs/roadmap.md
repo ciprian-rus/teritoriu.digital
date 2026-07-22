@@ -2,8 +2,8 @@
 
 | Milestone | Rezultat verificabil | Stare |
 |---|---|---|
-| M0 — Fundație | ADR-uri, contract inițial, schemă Supabase, CI și guvernanță | în lucru |
-| M1 — Surse | registru de surse și downloader controlat, reluabil | planificat |
+| M0 — Fundație | ADR-uri, contract inițial, schemă Supabase, CI și guvernanță | în lucru — tehnic validat; rămân licența și branch protection |
+| M1 — Surse | registru de surse și downloader controlat, reluabil | în implementare |
 | M2 — Model | parser, reconciliere UUIDv7 și validări canonice | planificat |
 | M3 — Primul release | snapshot SIRUTA verificat, JSON/CSV, manifest, SHA-256 și diff | planificat |
 | M4 — Site | căutare și navigare ierarhică accesibilă | planificat |
@@ -26,4 +26,3 @@ M0 se închide numai după:
 - configurarea branch protection;
 - aprobarea explicită a ADR-urilor;
 - demonstrarea că schema `registry` nu este expusă anonim.
-

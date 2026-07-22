@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "sourceId": "01983d9c-4b00-7abc-8def-1234567890ab",
+  "slug": "ro.ins.siruta",
+  "publisher": "Institutul Național de Statistică",
+  "title": "SIRUTA_an 2025",
+  "authorityRole": "authoritative",
+  "licenseSpdx": "CC-BY-4.0",
+  "expectedFrequency": "semiannual",
+  "sourceVersion": "2025",
+  "datasetUrl": "https://data.gov.ro/dataset/siruta_an-2025",
+  "ckanApiUrl": "https://data.gov.ro/api/3/action/package_show",
+  "ckanPackageId": "siruta_an-2025",
+  "resourceUrl": "https://data.gov.ro/dataset/06950cb3-41b7-48b8-91bb-4a329786d178/resource/2a9be5d1-f74f-40f1-b549-b6c6cfcda968/download/siruta_an_2025.csv",
+  "resourceId": "2a9be5d1-f74f-40f1-b549-b6c6cfcda968",
+  "allowedHosts": ["data.gov.ro"],
+  "allowedProtocols": ["https:"],
+  "allowedPorts": [443],
+  "expectedDetectedMediaTypes": [
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  ],
+  "maxBytes": 5242880,
+  "timeoutMs": 20000,
+  "maxAttempts": 4,
+  "maxRedirects": 5,
+  "observedSnapshot": {
+    "sha256": "a073cd565f1c2be2de3fb59f4f131dfae8f0c3ecc858610206927fba89469a41",
+    "sizeBytes": 1158236
+  }
+}

@@ -1,0 +1,57 @@
+name: Acquire SIRUTA
+
+on:
+  schedule:
+    - cron: "17 4 * * 3"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Validate only or archive/register the snapshot
+        required: true
+        default: dry-run
+        type: choice
+        options:
+          - dry-run
+          - publish
+      expected_sha256:
+        description: Optional exact SHA-256 gate
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: acquire-siruta
+  cancel-in-progress: false
+
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install
+        run: npm ci --ignore-scripts
+      - name: Unit and policy tests
+        run: npm test
+      - name: Acquire official snapshot
+        env:
+          REQUESTED_MODE: ${{ github.event_name == 'schedule' && 'dry-run' || inputs.mode }}
+          EXPECTED_SHA256: ${{ inputs.expected_sha256 }}
+        run: |
+          args=("--${REQUESTED_MODE}")
+          if [[ -n "${EXPECTED_SHA256}" ]]; then
+            args+=("--expected-sha256" "${EXPECTED_SHA256}")
+          fi
+          npm run acquire:siruta -- "${args[@]}"

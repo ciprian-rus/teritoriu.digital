@@ -3,6 +3,7 @@ node_modules/
 coverage/
 playwright-report/
 test-results/
+.artifacts/
 
 .env
 .env.*
@@ -14,4 +15,3 @@ supabase/.temp/
 
 *.log
 .DS_Store
-
