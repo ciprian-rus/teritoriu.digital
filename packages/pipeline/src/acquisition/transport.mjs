@@ -62,6 +62,8 @@ async function readBody(response, maxBytes) {
 
 export function nodeTransport(url, options) {
   const client = url.protocol === "https:" ? https : http;
+  const startedAt = Date.now();
+  const elapsedMs = () => Date.now() - startedAt;
   return new Promise((resolve, reject) => {
     const request = client.request(
       url,
@@ -90,12 +92,17 @@ export function nodeTransport(url, options) {
     request.setTimeout(options.timeoutMs, () => {
       request.destroy(
         new AcquisitionError("TIMEOUT", `Request exceeded ${options.timeoutMs} ms`, {
-          retryable: true
+          retryable: true,
+          context: {
+            elapsedMs: elapsedMs(),
+            timeoutSource: "socket-inactivity"
+          }
         })
       );
     });
     request.on("error", (cause) => {
       if (cause instanceof AcquisitionError) {
+        cause.context = { elapsedMs: elapsedMs(), ...cause.context };
         reject(cause);
         return;
       }
@@ -104,7 +111,15 @@ export function nodeTransport(url, options) {
         new AcquisitionError(
           aborted ? "TIMEOUT" : "NETWORK_FAILED",
           aborted ? `Request exceeded ${options.timeoutMs} ms` : "Network request failed",
-          { cause, retryable: true }
+          {
+            cause,
+            retryable: true,
+            context: {
+              causeCode: typeof cause?.code === "string" ? cause.code : undefined,
+              elapsedMs: elapsedMs(),
+              timeoutSource: aborted ? "request-deadline" : undefined
+            }
+          }
         )
       );
     });

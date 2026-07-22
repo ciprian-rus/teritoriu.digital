@@ -62,10 +62,22 @@ function acquisitionFailureContext(error) {
   const phase = error?.context?.phase;
   const attempts = error?.context?.attempts;
   const maxAttempts = error?.context?.maxAttempts;
+  const elapsedMs = error?.context?.elapsedMs;
+  const timeoutSource = error?.context?.timeoutSource;
+  const causeCode = error?.context?.causeCode;
   return {
     phase: typeof phase === "string" ? phase : undefined,
     attempts: Number.isSafeInteger(attempts) ? attempts : undefined,
-    maxAttempts: Number.isSafeInteger(maxAttempts) ? maxAttempts : undefined
+    maxAttempts: Number.isSafeInteger(maxAttempts) ? maxAttempts : undefined,
+    elapsedMs: Number.isSafeInteger(elapsedMs) && elapsedMs >= 0 ? elapsedMs : undefined,
+    timeoutSource:
+      timeoutSource === "socket-inactivity" || timeoutSource === "request-deadline"
+        ? timeoutSource
+        : undefined,
+    causeCode:
+      typeof causeCode === "string" && /^[A-Z0-9_]{1,40}$/.test(causeCode)
+        ? causeCode
+        : undefined
   };
 }
 
