@@ -60,6 +60,23 @@ jobs:
             args+=("--expected-sha256" "${EXPECTED_SHA256}")
           fi
           npm run acquire:siruta -- "${args[@]}"
+      - name: Diagnose CKAN reachability after a failure
+        if: failure()
+        continue-on-error: true
+        run: |
+          set +e
+          metrics=$(curl \
+            --silent --show-error \
+            --connect-timeout 10 \
+            --max-time 30 \
+            --max-filesize 2097152 \
+            --output /dev/null \
+            --write-out 'status=%{http_code} elapsed=%{time_total}' \
+            'https://data.gov.ro/api/3/action/package_show?id=siruta_an-2025')
+          result=$?
+          set -e
+          echo "CKAN diagnostic: ${metrics} curl_exit=${result}"
+          exit "${result}"
 
   publish:
     if: github.event_name == 'workflow_dispatch' && inputs.mode == 'publish' && github.ref == 'refs/heads/main'
