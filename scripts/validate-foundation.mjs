@@ -247,6 +247,9 @@ const acquirePublishSection = acquireWorkflow.slice(acquireWorkflow.indexOf("  p
 if (acquireValidateSection.includes("secrets.")) {
   errors.push("Acquire SIRUTA validate job must never receive repository or environment secrets");
 }
+if (!acquireValidateSection.includes("if: github.event_name != 'pull_request'")) {
+  errors.push("Acquire SIRUTA live source access must stay outside the deterministic PR gate");
+}
 if (!acquirePublishSection.includes("environment: production")) {
   errors.push("Acquire SIRUTA publish job must use the protected production environment");
 }

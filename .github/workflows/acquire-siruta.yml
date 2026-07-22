@@ -52,6 +52,7 @@ jobs:
       - name: Unit and policy tests
         run: npm test
       - name: Validate official snapshot without writes
+        if: github.event_name != 'pull_request'
         env:
           EXPECTED_SHA256: ${{ github.event_name == 'workflow_dispatch' && inputs.expected_sha256 || '' }}
         run: |
@@ -61,7 +62,7 @@ jobs:
           fi
           npm run acquire:siruta -- "${args[@]}"
       - name: Diagnose CKAN reachability after a failure
-        if: failure()
+        if: failure() && github.event_name != 'pull_request'
         continue-on-error: true
         run: |
           set +e

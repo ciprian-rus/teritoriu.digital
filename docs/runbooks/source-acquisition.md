@@ -2,11 +2,11 @@
 
 ## Scop și limite
 
-Workflow-ul `Acquire SIRUTA` rulează independent de aplicația web. El descoperă resursa prin API-ul CKAN, validează ID-ul și URL-ul configurate, descarcă octeții sursă, rulează profilul canonic M2 și oprește execuția la orice abatere neaprobată. Un eșec nu modifică datele canonice și nici canalul `stable`.
+Workflow-ul `Acquire SIRUTA` rulează independent de aplicația web. În PR rulează exclusiv gate-urile deterministe de cod și politică, fără a transforma disponibilitatea unui serviciu terț într-un verdict asupra schimbării. În rulările programate sau manuale, el descoperă resursa prin API-ul CKAN, validează ID-ul și URL-ul configurate, descarcă octeții sursă, rulează profilul canonic M2 și oprește execuția la orice abatere neaprobată. Un eșec nu modifică datele canonice și nici canalul `stable`.
 
 Programarea săptămânală rulează inițial numai `--dry-run`. Trecerea programării la `--publish` se face printr-un PR separat după două rulări manuale idempotente și aprobare explicită.
 
-Dry-run-ul din PR și cel programat folosesc `--fail-on-observed-change`: dacă mărimea sau SHA-256 diferă de baseline-ul revizuit din configurație, workflow-ul afișează noile valori și eșuează. Baseline-ul se actualizează numai printr-un PR care verifică emitentul, resursa, licența, schema și raportul M2.
+Dry-run-ul programat și cel manual folosesc `--fail-on-observed-change`: dacă mărimea sau SHA-256 diferă de baseline-ul revizuit din configurație, workflow-ul afișează noile valori și eșuează. Baseline-ul se actualizează numai printr-un PR care verifică emitentul, resursa, licența, schema și raportul M2. Publicarea manuală depinde de același gate live, deci nu poate continua când sursa nu este accesibilă sau profilul s-a schimbat.
 
 Resursa observată este declarată `text/csv`, dar conținutul este XLSX. Acesta este un avertisment cunoscut și auditat; pipeline-ul acceptă exclusiv semnătura XLSX pentru această sursă.
 
