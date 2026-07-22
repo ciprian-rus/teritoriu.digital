@@ -2,9 +2,11 @@
 
 ## Scop și limite
 
-Workflow-ul `Acquire SIRUTA` rulează independent de aplicația web. El descoperă resursa prin API-ul CKAN, validează ID-ul și URL-ul configurate, descarcă octeții sursă și oprește execuția la orice abatere neaprobată. Un eșec nu modifică datele canonice și nici canalul `stable`.
+Workflow-ul `Acquire SIRUTA` rulează independent de aplicația web. El descoperă resursa prin API-ul CKAN, validează ID-ul și URL-ul configurate, descarcă octeții sursă, rulează profilul canonic M2 și oprește execuția la orice abatere neaprobată. Un eșec nu modifică datele canonice și nici canalul `stable`.
 
 Programarea săptămânală rulează inițial numai `--dry-run`. Trecerea programării la `--publish` se face printr-un PR separat după două rulări manuale idempotente și aprobare explicită.
+
+Dry-run-ul din PR și cel programat folosesc `--fail-on-observed-change`: dacă mărimea sau SHA-256 diferă de baseline-ul revizuit din configurație, workflow-ul afișează noile valori și eșuează. Baseline-ul se actualizează numai printr-un PR care verifică emitentul, resursa, licența, schema și raportul M2.
 
 Resursa observată este declarată `text/csv`, dar conținutul este XLSX. Acesta este un avertisment cunoscut și auditat; pipeline-ul acceptă exclusiv semnătura XLSX pentru această sursă.
 
@@ -38,7 +40,7 @@ Modul `--publish` cere exclusiv în mediul de execuție:
 - `SUPABASE_SERVICE_ROLE_KEY`;
 - `SUPABASE_DB_URL`.
 
-Valorile nu se introduc în repository, argumente CLI sau loguri. În GitHub se configurează ca Actions secrets. Cheia service-role are acces numai în runnerul workflow-ului; nu este disponibilă aplicației web. Rotirea unei chei presupune actualizarea secretului GitHub, o rulare `--dry-run`, o rulare `--publish`, apoi revocarea valorii vechi.
+Valorile nu se introduc în repository, argumente CLI sau loguri. În GitHub se configurează ca secrets ale environment-ului `production`, cu aprobare obligatorie. Ele sunt injectate numai în pasul manual de publicare, după ce jobul `validate` a trecut fără secrete. Cheia service-role nu este disponibilă instalării, testelor sau aplicației web. Rotirea unei chei presupune actualizarea secretului din environment, o rulare `--dry-run`, o rulare `--publish`, apoi revocarea valorii vechi.
 
 ## Garanții
 
@@ -48,6 +50,7 @@ Valorile nu se introduc în repository, argumente CLI sau loguri. În GitHub se 
 - maximum 5 MiB, 20 secunde/încercare, maximum patru încercări;
 - retry numai pentru erori de rețea, timeout, `408`, `425`, `429` și `5xx`;
 - SHA-256 calculat pe octeții exacți;
+- antetul și profilul SIRUTA sunt validate înaintea oricărei scrieri;
 - cale de stocare derivată din hash și upload fără `upsert`;
 - un obiect existent este descărcat și reverificat înainte de a fi acceptat;
 - unicitate în baza de date pe `(source_id, sha256)`;

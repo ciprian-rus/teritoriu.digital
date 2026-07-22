@@ -20,6 +20,16 @@ export async function acquireSource(source, options = {}) {
     throw error;
   }
 
+  const validation = options.snapshotValidator
+    ? await options.snapshotValidator(download.bytes)
+    : null;
+  if (validation?.status === "blocked") {
+    const error = new Error("The downloaded snapshot failed blocking canonical validations");
+    error.code = "SNAPSHOT_VALIDATION_BLOCKED";
+    error.validation = validation;
+    throw error;
+  }
+
   if (options.localArchiveDirectory) {
     const local = await archiveLocally(
       options.localArchiveDirectory,
@@ -31,6 +41,7 @@ export async function acquireSource(source, options = {}) {
       mode: options.dryRun ? "dry-run" : "local",
       download,
       metadata: local.metadata,
+      validation,
       archiveCreated: local.created,
       snapshotCreated: false
     };
@@ -42,6 +53,7 @@ export async function acquireSource(source, options = {}) {
       mode: "dry-run",
       download,
       metadata,
+      validation,
       archiveCreated: false,
       snapshotCreated: false
     };
@@ -61,6 +73,7 @@ export async function acquireSource(source, options = {}) {
     mode: "publish",
     download,
     metadata: { ...metadata, snapshotId: registration.snapshotId },
+    validation,
     archiveCreated: archive.created,
     snapshotCreated: registration.created
   };

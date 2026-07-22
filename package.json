@@ -10,10 +10,13 @@
     "check": "node scripts/validate-foundation.mjs",
     "test:unit": "node --test",
     "test": "npm run check && npm run test:unit",
-    "acquire:siruta": "node scripts/acquire-siruta.mjs"
+    "acquire:siruta": "node scripts/acquire-siruta.mjs",
+    "fetch:siruta": "node scripts/fetch-siruta-snapshot.mjs",
+    "candidate:siruta": "node scripts/build-siruta-candidate.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.110.8",
-    "pg": "8.22.0"
+    "pg": "8.22.0",
+    "read-excel-file": "9.3.4"
   }
 }

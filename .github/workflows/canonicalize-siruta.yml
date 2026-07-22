@@ -1,0 +1,71 @@
+name: Canonicalize SIRUTA
+
+on:
+  workflow_dispatch:
+    inputs:
+      snapshot_id:
+        description: Exact registry.source_snapshots UUIDv7
+        required: true
+        type: string
+      snapshot_sha256:
+        description: Exact lowercase SHA-256 from the acquisition run
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: canonicalize-siruta
+  cancel-in-progress: false
+
+jobs:
+  canonicalize:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      SNAPSHOT_ID: ${{ inputs.snapshot_id }}
+      SNAPSHOT_SHA256: ${{ inputs.snapshot_sha256 }}
+      PIPELINE_COMMIT: ${{ github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install
+        run: npm ci --ignore-scripts
+      - name: Unit and policy tests
+        run: npm test
+      - name: Fetch exact private snapshot
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          npm run fetch:siruta -- \
+            --snapshot-id "${SNAPSHOT_ID}" \
+            --snapshot-sha256 "${SNAPSHOT_SHA256}" \
+            --output "${RUNNER_TEMP}/siruta.xlsx"
+      - name: Build and stage candidate
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          npm run candidate:siruta -- \
+            --input "${RUNNER_TEMP}/siruta.xlsx" \
+            --snapshot-id "${SNAPSHOT_ID}" \
+            --snapshot-sha256 "${SNAPSHOT_SHA256}" \
+            --pipeline-commit "${PIPELINE_COMMIT}" \
+            --stage
+      - name: Preserve candidate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: siruta-candidate-${{ github.run_id }}
+          path: .artifacts/candidates/
+          if-no-files-found: warn
+          retention-days: 30
