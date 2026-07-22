@@ -58,6 +58,17 @@ function validationFailureSummary(error) {
   };
 }
 
+function acquisitionFailureContext(error) {
+  const phase = error?.context?.phase;
+  const attempts = error?.context?.attempts;
+  const maxAttempts = error?.context?.maxAttempts;
+  return {
+    phase: typeof phase === "string" ? phase : undefined,
+    attempts: Number.isSafeInteger(attempts) ? attempts : undefined,
+    maxAttempts: Number.isSafeInteger(maxAttempts) ? maxAttempts : undefined
+  };
+}
+
 try {
   const args = parseArguments(process.argv.slice(2));
   if (args.help) {
@@ -119,6 +130,7 @@ try {
       ok: false,
       code: error.code ?? "ACQUISITION_FAILED",
       message: safeErrorMessage(error),
+      ...acquisitionFailureContext(error),
       validation: validationFailureSummary(error)
     })
   );

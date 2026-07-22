@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { acquireSource } from "../../packages/pipeline/src/acquisition/acquire.mjs";
+import { AcquisitionError } from "../../packages/pipeline/src/acquisition/errors.mjs";
 
 const bytes = Buffer.concat([
   Buffer.from([0x50, 0x4b, 0x03, 0x04]),
@@ -64,6 +65,32 @@ test("blocks before archive or metadata writes when canonical validation fails",
       dependencies,
       snapshotValidator: async () => ({ status: "blocked", findings: [] })
     }),
-    { code: "SNAPSHOT_VALIDATION_BLOCKED" }
+    (error) => {
+      assert.equal(error.code, "SNAPSHOT_VALIDATION_BLOCKED");
+      assert.equal(error.context.phase, "canonical-validation");
+      return true;
+    }
+  );
+});
+
+test("labels a terminal download failure with its phase and attempt count", async () => {
+  await assert.rejects(
+    acquireSource(source, {
+      skipDiscovery: true,
+      dryRun: true,
+      dependencies: {
+        ...dependencies,
+        transport: async () => {
+          throw new AcquisitionError("TIMEOUT", "fixture timeout", { retryable: true });
+        }
+      }
+    }),
+    (error) => {
+      assert.equal(error.code, "TIMEOUT");
+      assert.equal(error.context.phase, "snapshot-download");
+      assert.equal(error.context.attempts, 1);
+      assert.equal(error.context.maxAttempts, 1);
+      return true;
+    }
   );
 });

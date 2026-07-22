@@ -159,6 +159,16 @@ if (JSON.stringify(sirutaSource.allowedPorts) !== JSON.stringify([443])) {
 if (sirutaSource.maxBytes > 5 * 1024 * 1024) {
   errors.push("SIRUTA acquisition limit exceeds the approved 5 MiB boundary");
 }
+if (
+  !Number.isSafeInteger(sirutaSource.timeoutMs) ||
+  sirutaSource.timeoutMs < 10000 ||
+  sirutaSource.timeoutMs > 60000
+) {
+  errors.push("SIRUTA timeout must stay between 10 and 60 seconds per attempt");
+}
+if (!Number.isSafeInteger(sirutaSource.maxAttempts) || sirutaSource.maxAttempts < 1 || sirutaSource.maxAttempts > 4) {
+  errors.push("SIRUTA acquisition must use between one and four attempts");
+}
 if (!/^[0-9a-f]{64}$/.test(sirutaSource.observedSnapshot?.sha256 ?? "")) {
   errors.push("SIRUTA observed snapshot must pin a lowercase SHA-256 baseline");
 }

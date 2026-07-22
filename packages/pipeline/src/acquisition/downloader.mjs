@@ -144,6 +144,11 @@ export async function downloadSnapshot(source, options = {}) {
               cause: error,
               retryable: true
             });
+      normalized.context = {
+        ...normalized.context,
+        attempts: attempt,
+        maxAttempts: source.maxAttempts
+      };
       lastError = normalized;
       if (!normalized.retryable || attempt === source.maxAttempts) {
         throw normalized;

@@ -47,7 +47,7 @@ Valorile nu se introduc în repository, argumente CLI sau loguri. În GitHub se 
 - HTTPS, host și port allowlistate exact;
 - rezoluția DNS este verificată, iar conexiunea folosește adresa publică deja validată;
 - fiecare redirect este revalidat;
-- maximum 5 MiB, 20 secunde/încercare, maximum patru încercări;
+- maximum 5 MiB, 60 de secunde/încercare, maximum patru încercări;
 - retry numai pentru erori de rețea, timeout, `408`, `425`, `429` și `5xx`;
 - SHA-256 calculat pe octeții exacți;
 - antetul și profilul SIRUTA sunt validate înaintea oricărei scrieri;
@@ -64,7 +64,8 @@ Valorile nu se introduc în repository, argumente CLI sau loguri. În GitHub se 
 3. Pentru `CKAN_RESOURCE_URL_CHANGED` sau `CKAN_RESOURCE_MISSING`, se verifică manual pagina oficială, ID-ul resursei, emitentul și licența. Orice actualizare de configurație trece prin PR.
 4. Pentru `PRIVATE_ADDRESS_BLOCKED`, `HOST_BLOCKED` sau `PROTOCOL_BLOCKED`, execuția rămâne blocată; nu se extinde allowlistul fără dovadă oficială.
 5. Pentru `MEDIA_TYPE_UNEXPECTED`, fișierul se tratează ca necunoscut și nu se parsează.
-6. Pentru o indisponibilitate temporară, se reia workflow-ul; cheia `(source_id, sha256)` previne duplicarea.
+6. Pentru `TIMEOUT`, logul indică faza (`ckan-discovery` sau `snapshot-download`) și numărul de încercări consumate; se reia workflow-ul numai după epuizarea retry-urilor interne.
+7. Pentru o indisponibilitate temporară, se reia workflow-ul; cheia `(source_id, sha256)` previne duplicarea.
 
 ## Dovezi pentru închiderea M1
 

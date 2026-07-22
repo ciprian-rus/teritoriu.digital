@@ -134,6 +134,11 @@ test("aborts and retries a request that exceeds its timeout", async (context) =>
         sleep: async () => {}
       }
     ),
-    { code: "TIMEOUT" }
+    (error) => {
+      assert.equal(error.code, "TIMEOUT");
+      assert.equal(error.context.attempts, 2);
+      assert.equal(error.context.maxAttempts, 2);
+      return true;
+    }
   );
 });
