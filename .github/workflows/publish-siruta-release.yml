@@ -1,0 +1,204 @@
+name: Publish SIRUTA Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Prepare/verify only or publish and promote stable
+        required: true
+        default: prepare
+        type: choice
+        options:
+          - prepare
+          - publish
+      import_run_id:
+        description: Exact approved registry.import_runs UUIDv7
+        required: true
+        type: string
+      release_id:
+        description: Release ID in YYYY.MM.DD.N form
+        required: true
+        type: string
+      published_at:
+        description: Exact UTC timestamp, for example 2026-07-22T16:00:00.000Z
+        required: true
+        type: string
+      rationale:
+        description: Publication rationale (minimum 10 characters)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-siruta-release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install
+        run: npm ci --ignore-scripts
+      - name: Unit and policy tests
+        run: npm test
+      - name: Rebuild approved candidate and release bundle
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          IMPORT_RUN_ID: ${{ inputs.import_run_id }}
+          RELEASE_ID: ${{ inputs.release_id }}
+          PUBLISHED_AT: ${{ inputs.published_at }}
+        run: |
+          npm run release:prepare:siruta -- \
+            --import-run-id "${IMPORT_RUN_ID}" \
+            --release-id "${RELEASE_ID}" \
+            --published-at "${PUBLISHED_AT}" \
+            --pipeline-commit "${GITHUB_SHA}" \
+            --repository "${GITHUB_REPOSITORY}" \
+            --output-dir ".artifacts/releases/${RELEASE_ID}"
+      - name: Preserve verified release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: siruta-release-${{ inputs.release_id }}
+          path: .artifacts/releases/${{ inputs.release_id }}/
+          if-no-files-found: error
+          retention-days: 30
+
+  verify:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install
+        run: npm ci --ignore-scripts
+      - name: Download prepared bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: siruta-release-${{ inputs.release_id }}
+          path: .artifacts/releases/${{ inputs.release_id }}
+      - name: Verify downloaded artifact independently
+        env:
+          RELEASE_ID: ${{ inputs.release_id }}
+        run: |
+          node --input-type=module -e '
+            import { readReleaseBundle } from "./packages/pipeline/src/release/bundle-files.mjs";
+            const bundle = await readReleaseBundle(`.artifacts/releases/${process.env.RELEASE_ID}`);
+            console.log(JSON.stringify({ ok: true, releaseId: bundle.manifest.releaseId, manifestSha256: bundle.manifestSha256 }));
+          '
+
+  publish:
+    if: inputs.mode == 'publish'
+    needs:
+      - prepare
+      - verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install
+        run: npm ci --ignore-scripts
+      - name: Download verified bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: siruta-release-${{ inputs.release_id }}
+          path: .artifacts/releases/${{ inputs.release_id }}
+      - name: Require public and immutable release configuration
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IMMUTABILITY_CONFIRMED: ${{ vars.RELEASE_IMMUTABILITY_CONFIRMED }}
+        run: |
+          test "$(gh api "repos/${GITHUB_REPOSITORY}" --jq .visibility)" = "public"
+          test "${IMMUTABILITY_CONFIRMED}" = "true"
+      - name: Create or verify the immutable GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ inputs.release_id }}
+        run: |
+          set -euo pipefail
+          tag="siruta-${RELEASE_ID}"
+          bundle=".artifacts/releases/${RELEASE_ID}"
+          files=(SHA256SUMS changelog.json manifest.json territories.csv territories.json validation-report.json)
+          if gh release view "${tag}" >/dev/null 2>&1; then
+            draft=$(gh release view "${tag}" --json isDraft --jq .isDraft)
+          else
+            if ! gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${tag}" >/dev/null 2>&1; then
+              gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+                -f ref="refs/tags/${tag}" \
+                -f sha="${GITHUB_SHA}" >/dev/null
+            fi
+            gh release create "${tag}" --verify-tag --draft --latest=false \
+              --title "SIRUTA ${RELEASE_ID}" \
+              --notes "Release verificabil Teritoriu.digital. Consultați manifest.json și SHA256SUMS."
+            draft=true
+          fi
+          if [[ "${draft}" == "true" ]]; then
+            upload=()
+            for file in "${files[@]}"; do upload+=("${bundle}/${file}"); done
+            gh release upload "${tag}" "${upload[@]}" --clobber
+          fi
+          downloaded=$(mktemp -d)
+          gh release download "${tag}" --dir "${downloaded}"
+          for file in "${files[@]}"; do cmp --silent "${bundle}/${file}" "${downloaded}/${file}"; done
+          if [[ "${draft}" == "true" ]]; then
+            gh release edit "${tag}" --draft=false --latest=false
+          fi
+      - name: Reverify published assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ inputs.release_id }}
+        run: |
+          tag="siruta-${RELEASE_ID}"
+          bundle=".artifacts/releases/${RELEASE_ID}"
+          downloaded=$(mktemp -d)
+          gh release download "${tag}" --dir "${downloaded}"
+          for file in SHA256SUMS changelog.json manifest.json territories.csv territories.json validation-report.json; do
+            cmp --silent "${bundle}/${file}" "${downloaded}/${file}"
+          done
+      - name: Promote canonical registry and stable atomically
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          IMPORT_RUN_ID: ${{ inputs.import_run_id }}
+          RELEASE_ID: ${{ inputs.release_id }}
+          RELEASE_RATIONALE: ${{ inputs.rationale }}
+          RELEASE_ACTOR: ${{ github.actor }}
+        run: |
+          npm run release:promote:siruta -- \
+            --import-run-id "${IMPORT_RUN_ID}" \
+            --bundle-dir ".artifacts/releases/${RELEASE_ID}" \
+            --actor "github:${RELEASE_ACTOR}" \
+            --rationale "${RELEASE_RATIONALE}"

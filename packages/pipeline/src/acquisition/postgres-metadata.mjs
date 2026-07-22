@@ -72,10 +72,10 @@ export async function registerSnapshot(source, metadata, options = {}) {
          sha256, storage_uri, source_version, status, metadata
        ) values (
          $1::uuid, $2::uuid, $3::timestamptz, $4, $5,
-         $6, $7, $8, $9, $10, $11, $12, 'downloaded', $13::jsonb
+         $6, $7, $8, $9, $10, $11, $12, 'archived', $13::jsonb
        )
        on conflict (source_id, sha256) do nothing
-       returning snapshot_id::text, size_bytes, detected_media_type, storage_uri`,
+       returning snapshot_id::text, size_bytes, detected_media_type, storage_uri, status`,
       [
         metadata.snapshotId,
         source.sourceId,
@@ -98,7 +98,7 @@ export async function registerSnapshot(source, metadata, options = {}) {
     if (!row) {
       created = false;
       const existingResult = await client.query(
-        `select snapshot_id::text, size_bytes, detected_media_type, storage_uri
+        `select snapshot_id::text, size_bytes, detected_media_type, storage_uri, status
            from registry.source_snapshots
           where source_id = $1::uuid and sha256 = $2`,
         [source.sourceId, metadata.sha256]
@@ -111,6 +111,19 @@ export async function registerSnapshot(source, metadata, options = {}) {
       }
     }
     assertSameSnapshot(row, metadata);
+    if (row.status === "downloaded") {
+      await client.query(
+        `update registry.source_snapshots
+         set status = 'archived'
+         where snapshot_id = $1::uuid and status = 'downloaded'`,
+        [row.snapshot_id]
+      );
+    } else if (row.status !== "archived" && row.status !== "validated") {
+      throw new AcquisitionError(
+        "SNAPSHOT_STATUS_CONFLICT",
+        "Existing snapshot has a state that cannot be promoted to archived"
+      );
+    }
     await client.query(
       `insert into registry.audit_events (
          audit_event_id, event_type, entity_kind, entity_key, actor, payload
@@ -124,7 +137,8 @@ export async function registerSnapshot(source, metadata, options = {}) {
           sha256: metadata.sha256,
           sizeBytes: metadata.sizeBytes,
           retrievedAt: metadata.retrievedAt,
-          snapshotCreated: created
+          snapshotCreated: created,
+          status: "archived"
         })
       ]
     );

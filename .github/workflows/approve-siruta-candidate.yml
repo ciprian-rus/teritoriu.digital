@@ -1,0 +1,58 @@
+name: Approve SIRUTA Candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      import_run_id:
+        description: Exact registry.import_runs UUIDv7
+        required: true
+        type: string
+      candidate_sha256:
+        description: Exact candidate SHA-256 from the M2 report
+        required: true
+        type: string
+      rationale:
+        description: Review rationale (minimum 10 characters)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: approve-siruta-candidate
+  cancel-in-progress: false
+
+jobs:
+  approve:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install
+        run: npm ci --ignore-scripts
+      - name: Unit and policy tests
+        run: npm test
+      - name: Approve exact candidate
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          IMPORT_RUN_ID: ${{ inputs.import_run_id }}
+          CANDIDATE_SHA256: ${{ inputs.candidate_sha256 }}
+          REVIEW_RATIONALE: ${{ inputs.rationale }}
+          REVIEW_ACTOR: ${{ github.actor }}
+        run: |
+          npm run approve:siruta -- \
+            --import-run-id "${IMPORT_RUN_ID}" \
+            --candidate-sha256 "${CANDIDATE_SHA256}" \
+            --actor "github:${REVIEW_ACTOR}" \
+            --rationale "${REVIEW_RATIONALE}"

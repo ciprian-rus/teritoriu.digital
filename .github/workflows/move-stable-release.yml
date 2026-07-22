@@ -1,0 +1,52 @@
+name: Move Stable Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_id:
+        description: Existing published target release in YYYY.MM.DD.N form
+        required: true
+        type: string
+      rationale:
+        description: Rollback or promotion rationale (minimum 10 characters)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: move-stable-release
+  cancel-in-progress: false
+
+jobs:
+  move:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install
+        run: npm ci --ignore-scripts
+      - name: Unit and policy tests
+        run: npm test
+      - name: Move stable with an audited event
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          TARGET_RELEASE_ID: ${{ inputs.release_id }}
+          MOVE_RATIONALE: ${{ inputs.rationale }}
+          MOVE_ACTOR: ${{ github.actor }}
+        run: |
+          npm run release:stable:siruta -- \
+            --release-id "${TARGET_RELEASE_ID}" \
+            --actor "github:${MOVE_ACTOR}" \
+            --rationale "${MOVE_RATIONALE}"

@@ -1,5 +1,8 @@
 import { readFile } from "node:fs/promises";
 
+import Ajv2020 from "ajv/dist/2020.js";
+import addFormats from "ajv-formats";
+
 const requiredFiles = [
   "README.md",
   "package.json",
@@ -11,8 +14,13 @@ const requiredFiles = [
   "docs/governance/roles-and-promotion.md",
   "docs/law-alignment.md",
   "docs/runbooks/siruta-canonicalization.md",
+  "docs/runbooks/siruta-release.md",
   ".github/workflows/acquire-siruta.yml",
+  ".github/workflows/approve-siruta-candidate.yml",
   ".github/workflows/canonicalize-siruta.yml",
+  ".github/workflows/move-stable-release.yml",
+  ".github/workflows/publish-siruta-release.yml",
+  ".github/workflows/verify-production-registry.yml",
   "config/sources/siruta-2025.json",
   "config/transforms/siruta-2025.json",
   "packages/pipeline/src/acquisition/ckan-discovery.mjs",
@@ -23,11 +31,21 @@ const requiredFiles = [
   "packages/pipeline/src/canonical/identity-reconciliation.mjs",
   "packages/pipeline/src/canonical/siruta-parser.mjs",
   "packages/pipeline/src/canonical/siruta-validation.mjs",
+  "packages/pipeline/src/release/artifact-builder.mjs",
+  "packages/pipeline/src/release/bundle-files.mjs",
+  "packages/pipeline/src/release/postgres-release.mjs",
+  "packages/consumer/src/import-release.mjs",
+  "scripts/approve-siruta-candidate.mjs",
+  "scripts/move-stable-release.mjs",
+  "scripts/prepare-siruta-release.mjs",
+  "scripts/promote-siruta-release.mjs",
+  "scripts/verify-production-registry.mjs",
   "schemas/release-manifest.schema.json",
   "schemas/territory.schema.json",
   "supabase/migrations/202607220001_initial_registry.sql",
   "supabase/migrations/202607220002_source_snapshot_storage.sql",
-  "supabase/migrations/202607220003_m2_identity_and_roles.sql"
+  "supabase/migrations/202607220003_m2_identity_and_roles.sql",
+  "supabase/migrations/202607220004_m3_release_governance.sql"
 ];
 
 const errors = [];
@@ -73,7 +91,7 @@ const [
   loadJson("config/sources/siruta-2025.json"),
   loadJson("config/transforms/siruta-2025.json")
 ]);
-await loadJson("schemas/examples/release-manifest.example.json");
+const manifestExample = await loadJson("schemas/examples/release-manifest.example.json");
 
 const initialMigration = await load("supabase/migrations/202607220001_initial_registry.sql");
 const initialMigrationInvariants = [
@@ -109,7 +127,24 @@ for (const invariant of m2MigrationInvariants) {
   }
 }
 
-const migrations = `${initialMigration}\n${m2Migration}`;
+const m3Migration = await load("supabase/migrations/202607220004_m3_release_governance.sql");
+const m3MigrationInvariants = [
+  "add column release_id text references registry.releases",
+  "create table registry.release_candidate_approvals",
+  "create table registry.release_channel_events",
+  "releases_one_published_import_idx",
+  "release_candidate_approvals_append_only",
+  "release_channel_events_append_only",
+  "release_channels_guard",
+  "releases_publication_date_check"
+];
+for (const invariant of m3MigrationInvariants) {
+  if (!m3Migration.toLowerCase().includes(invariant)) {
+    errors.push(`M3 migration invariant missing: ${invariant}`);
+  }
+}
+
+const migrations = `${initialMigration}\n${m2Migration}\n${m3Migration}`;
 if (/service_role|sb_secret_|supabase_service_role_key/i.test(migrations)) {
   errors.push("migrations must not contain privileged API key names or values");
 }
@@ -121,6 +156,32 @@ for (const [name, schema] of Object.entries({ manifestSchema, territorySchema })
   if (schema.additionalProperties !== false) {
     errors.push(`${name}: additionalProperties must be false at the root`);
   }
+}
+
+try {
+  const ajv = new Ajv2020({ allErrors: true, strict: true });
+  addFormats(ajv);
+  const validateManifestExample = ajv.compile(manifestSchema);
+  if (!validateManifestExample(manifestExample)) {
+    errors.push(`release manifest example fails its schema: ${JSON.stringify(validateManifestExample.errors)}`);
+  }
+} catch (error) {
+  errors.push(`release manifest schema could not be compiled (${error.message})`);
+}
+
+for (const field of [
+  "releaseTag",
+  "transformationVersion",
+  "candidateSha256",
+  "approval",
+  "license",
+  "changelogArtifact",
+  "checksumArtifact"
+]) {
+  if (!manifestSchema.required?.includes(field)) errors.push(`release manifest must require ${field}`);
+}
+if (manifestSchema.properties?.license?.properties?.spdx?.const !== "CC-BY-4.0") {
+  errors.push("release manifest must preserve the reviewed SIRUTA CC-BY-4.0 license");
 }
 
 const administrativeRoles = [
@@ -234,6 +295,15 @@ if (xlsxLimits.maxEntryUncompressedBytes > xlsxLimits.maxUncompressedBytes) {
 if (packageJson.dependencies?.["read-excel-file"] !== "9.3.4") {
   errors.push("read-excel-file must be pinned to the reviewed version 9.3.4");
 }
+if (packageJson.dependencies?.ajv !== "8.20.0" || packageJson.dependencies?.["ajv-formats"] !== "3.0.1") {
+  errors.push("release schema validators must stay pinned to ajv 8.20.0 and ajv-formats 3.0.1");
+}
+if (
+  packageLock.packages?.[""]?.dependencies?.ajv !== "8.20.0" ||
+  packageLock.packages?.[""]?.dependencies?.["ajv-formats"] !== "3.0.1"
+) {
+  errors.push("package-lock root must pin the reviewed release schema validators");
+}
 if (packageLock.packages?.[""]?.dependencies?.["read-excel-file"] !== "9.3.4") {
   errors.push("package-lock root must pin read-excel-file 9.3.4");
 }
@@ -267,6 +337,62 @@ if (canonicalizeBeforeFetch.includes("secrets.")) {
 }
 if (!canonicalizeWorkflow.includes("environment: production") || !canonicalizeWorkflow.includes("github.ref == 'refs/heads/main'")) {
   errors.push("Canonicalize SIRUTA must be restricted to main and the protected production environment");
+}
+
+const approveWorkflow = await load(".github/workflows/approve-siruta-candidate.yml");
+const approveBeforePrivilegedStep = approveWorkflow.slice(0, approveWorkflow.indexOf("      - name: Approve exact candidate"));
+if (approveBeforePrivilegedStep.includes("secrets.")) {
+  errors.push("Candidate approval tests must run before SUPABASE_DB_URL is injected");
+}
+if (!approveWorkflow.includes("environment: production") || !approveWorkflow.includes("persist-credentials: false")) {
+  errors.push("Candidate approval must use production protection and discard checkout credentials");
+}
+
+const publishWorkflow = await load(".github/workflows/publish-siruta-release.yml");
+const publishBeforeBuild = publishWorkflow.slice(0, publishWorkflow.indexOf("      - name: Rebuild approved candidate and release bundle"));
+if (publishBeforeBuild.includes("secrets.")) {
+  errors.push("Release install and tests must run before Supabase secrets are injected");
+}
+for (const invariant of [
+  "RELEASE_IMMUTABILITY_CONFIRMED",
+  "--jq .visibility",
+  "persist-credentials: false",
+  "readReleaseBundle",
+  "cmp --silent",
+  "release:promote:siruta"
+]) {
+  if (!publishWorkflow.includes(invariant)) errors.push(`Release workflow invariant missing: ${invariant}`);
+}
+
+const moveStableWorkflow = await load(".github/workflows/move-stable-release.yml");
+const moveBeforePrivilegedStep = moveStableWorkflow.slice(0, moveStableWorkflow.indexOf("      - name: Move stable with an audited event"));
+if (moveBeforePrivilegedStep.includes("secrets.")) {
+  errors.push("Stable-channel tests must run before SUPABASE_DB_URL is injected");
+}
+
+const productionVerificationWorkflow = await load(".github/workflows/verify-production-registry.yml");
+const productionBeforePrivilegedStep = productionVerificationWorkflow.slice(
+  0,
+  productionVerificationWorkflow.indexOf("      - name: Verify production migrations and isolation read-only")
+);
+if (productionBeforePrivilegedStep.includes("secrets.")) {
+  errors.push("Production verification tests must run before SUPABASE_DB_URL is injected");
+}
+if (
+  !productionVerificationWorkflow.includes("environment: production") ||
+  !productionVerificationWorkflow.includes("persist-credentials: false")
+) {
+  errors.push("Production verification must be protected and discard checkout credentials");
+}
+if (
+  !productionVerificationWorkflow.includes("push:") ||
+  !productionVerificationWorkflow.includes("branches:") ||
+  !productionVerificationWorkflow.includes("supabase/migrations/**")
+) {
+  errors.push("Production verification must run after migration pushes to main");
+}
+if (!moveStableWorkflow.includes("environment: production") || !moveStableWorkflow.includes("release:stable:siruta")) {
+  errors.push("Stable-channel moves must use the protected audited workflow");
 }
 
 if (errors.length > 0) {
