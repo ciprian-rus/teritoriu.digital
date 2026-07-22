@@ -1,0 +1,45 @@
+name: Verify Production Registry
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/verify-production-registry.yml"
+      - "package.json"
+      - "package-lock.json"
+      - "scripts/verify-production-registry.mjs"
+      - "supabase/migrations/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-production-registry
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install
+        run: npm ci --ignore-scripts
+      - name: Unit and policy tests
+        run: npm test
+      - name: Verify production migrations and isolation read-only
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: node scripts/verify-production-registry.mjs

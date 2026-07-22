@@ -144,7 +144,7 @@ try {
         idempotencyKey,
         pipelineCommit: args.pipelineCommit,
         parserVersion: configuration.transformationVersion,
-        dryRun: true
+        dryRun: false
       },
       result,
       { client }

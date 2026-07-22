@@ -12,10 +12,16 @@
     "test": "npm run check && npm run test:unit",
     "acquire:siruta": "node scripts/acquire-siruta.mjs",
     "fetch:siruta": "node scripts/fetch-siruta-snapshot.mjs",
-    "candidate:siruta": "node scripts/build-siruta-candidate.mjs"
+    "candidate:siruta": "node scripts/build-siruta-candidate.mjs",
+    "approve:siruta": "node scripts/approve-siruta-candidate.mjs",
+    "release:prepare:siruta": "node scripts/prepare-siruta-release.mjs",
+    "release:promote:siruta": "node scripts/promote-siruta-release.mjs",
+    "release:stable:siruta": "node scripts/move-stable-release.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.110.8",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
     "pg": "8.22.0",
     "read-excel-file": "9.3.4"
   }

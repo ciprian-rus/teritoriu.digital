@@ -16,6 +16,10 @@ export function canonicalJson(value) {
   return JSON.stringify(normalize(value));
 }
 
+export function canonicalJsonPretty(value) {
+  return `${JSON.stringify(normalize(value), null, 2)}\n`;
+}
+
 export function canonicalSha256(value) {
   return createHash("sha256").update(canonicalJson(value)).digest("hex");
 }

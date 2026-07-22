@@ -70,14 +70,16 @@ Registrul de adresare prevăzut de propunerea legislativă este un context disti
 │   ├── architecture/        # arhitectura sistemului
 │   └── governance/          # roluri și promovarea release-urilor
 ├── schemas/                 # contracte JSON Schema
-├── packages/pipeline/       # achiziție, parsare, reconciliere și staging
+├── packages/
+│   ├── pipeline/            # achiziție, parsare, release și promovare
+│   └── consumer/            # importator izolat al bundle-urilor publice
 ├── scripts/                 # verificări locale fără secrete
 └── supabase/
     ├── migrations/          # schema relațională/PostGIS versionată
     └── tests/               # teste pgTAP
 ```
 
-Interfața Next.js, pipeline-ul de ingestie și API-ul vor fi adăugate incremental, după stabilizarea contractului de date. Nu există încă deployment de producție.
+Interfața publică și API-ul vor fi adăugate incremental, după stabilizarea contractului de date. Planul de control Supabase este dedicat și versionat prin migrații; nu există încă un release public de date sau un site public.
 
 ## Verificare locală
 
@@ -101,8 +103,9 @@ supabase db lint --level warning
 - [Roluri și promovarea release-urilor](docs/governance/roles-and-promotion.md)
 - [Runbook achiziție SIRUTA](docs/runbooks/source-acquisition.md)
 - [Runbook candidat canonic SIRUTA](docs/runbooks/siruta-canonicalization.md)
+- [Runbook primul release SIRUTA](docs/runbooks/siruta-release.md)
 - [Runbook backup și restaurare](docs/runbooks/backup-restore.md)
 
 ## Stare
 
-Proiectul finalizează **M0**, are implementată achiziția controlată M1 și construiește **M2 — modelul canonic**. Schema internă este neexpusă public; închiderea etapelor mai cere dovezile live și deciziile enumerate în roadmap.
+Proiectul finalizează **M0**, are implementate tehnic M1 și M2 și construiește **M3 — primul release reproductibil**. Închiderea M1/M2 cere încă dry-run-ul, publicarea idempotentă și stagingul live pe snapshotul oficial; schema internă rămâne neexpusă public.

@@ -27,9 +27,12 @@ După publicare, rândul release-ului și artefactele sale nu pot fi actualizate
 
 Artefactele vor fi atașate unui GitHub Release configurat imuabil sau unui depozit de obiecte cu retenție echivalentă. Baza de date păstrează doar metadatele și URI-urile verificate; disponibilitatea publică nu se bazează exclusiv pe rândurile Supabase.
 
+Primul release folosește tagul `siruta-<releaseId>`. Pipeline-ul verifică faptul că repository-ul este public și cere confirmarea explicită a setării GitHub pentru release-uri imuabile înainte să publice. Pregătirea rămâne disponibilă în repository privat, însă nu este prezentată drept distribuție publică.
+
+Fișierele sunt construite înaintea uploadului și reverificate după descărcare. `SHA256SUMS` nu își include propriul hash; `manifest.json` nu se include pe sine în lista internă de artefacte. Hashul manifestului și cel al fișierului de checksum sunt păstrate separat în metadatele release-ului, evitând referințe circulare.
+
 ## Consecințe
 
 - Orice versiune consumată poate fi reprodusă și verificată.
 - Erorile publicate rămân vizibile în istoric și sunt corectate transparent.
 - Promovarea și rollback-ul trebuie testate înaintea primei versiuni stabile.
-

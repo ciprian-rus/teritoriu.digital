@@ -27,6 +27,8 @@ Workflow-urile care folosesc acces privilegiat rulează numai din `main` prin en
 9. Release-ul devine imuabil.
 10. Canalul `stable` este actualizat numai după un smoke test de descărcare/import.
 
+Aprobarea candidatului este un rând append-only legat de `import_run_id` și `candidateSha256`; nu este doar un comentariu sau un status GitHub. Evenimentele canalului sunt și ele append-only, astfel încât publicarea, promovarea și rollback-ul pot fi reconstruite separat de valoarea curentă a pointerului.
+
 Findings cu severitate `error` sau `blocker` opresc promovarea. O excepție este un obiect auditabil, limitat la o regulă, un candidat și o justificare; nu reduce global validarea.
 
 ## Corecții

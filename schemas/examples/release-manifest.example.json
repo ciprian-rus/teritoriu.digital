@@ -1,52 +1,79 @@
 {
   "releaseId": "2026.07.22.1",
+  "releaseTag": "siruta-2026.07.22.1",
   "schemaVersion": "1.0.0",
-  "publishedAt": "2026-07-22T12:00:00Z",
+  "transformationVersion": "siruta-2025.1.0.0",
+  "publishedAt": "2026-07-22T16:00:00.000Z",
   "previousReleaseId": null,
   "pipelineCommit": "0123456789abcdef0123456789abcdef01234567",
+  "candidateSha256": "1111111111111111111111111111111111111111111111111111111111111111",
+  "approval": {
+    "importRunId": "018f0000-0000-7000-8000-0000000000cc",
+    "approvedBy": "release-reviewer",
+    "approvedAt": "2026-07-22T15:30:00.000Z",
+    "rationale": "Profilul, identitățile și proveniența au fost verificate integral.",
+    "candidateSha256": "1111111111111111111111111111111111111111111111111111111111111111"
+  },
+  "license": {
+    "spdx": "CC-BY-4.0",
+    "name": "Creative Commons Attribution 4.0 International",
+    "url": "https://creativecommons.org/licenses/by/4.0/",
+    "attribution": "Sursa datelor: Institutul Național de Statistică, SIRUTA 2025, publicat prin data.gov.ro."
+  },
   "sourceSnapshots": [
     {
+      "snapshotId": "018f0000-0000-7000-8000-0000000000aa",
       "source": "ro.ins.siruta",
-      "retrievedAt": "2026-07-22T09:00:00Z",
+      "publisher": "Institutul Național de Statistică",
+      "retrievedAt": "2026-07-22T14:00:00.000Z",
       "sha256": "a073cd565f1c2be2de3fb59f4f131dfae8f0c3ecc858610206927fba89469a41",
       "sizeBytes": 1158236,
-      "uri": "https://example.invalid/snapshots/siruta-2025.xlsx"
+      "uri": "https://data.gov.ro/dataset/06950cb3-41b7-48b8-91bb-4a329786d178/resource/2a9be5d1-f74f-40f1-b549-b6c6cfcda968/download/siruta_an_2025.csv"
     }
   ],
   "counts": {
     "territories": 16978,
-    "counties": 42,
-    "uats": 3181,
+    "countyUats": 42,
+    "localUats": 3175,
+    "administrativeSubdivisions": 6,
     "localities": 13755
   },
   "quality": {
     "status": "passed_with_warnings",
     "errors": 0,
-    "warnings": 77,
+    "warnings": 2,
     "reportArtifact": "validation-report.json"
   },
+  "changelogArtifact": "changelog.json",
+  "checksumArtifact": "SHA256SUMS",
   "artifacts": [
+    {
+      "name": "changelog.json",
+      "mediaType": "application/json",
+      "sizeBytes": 1,
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "uri": "https://github.com/ciprian-rus/teritoriu.digital/releases/download/siruta-2026.07.22.1/changelog.json"
+    },
+    {
+      "name": "territories.csv",
+      "mediaType": "text/csv; charset=utf-8",
+      "sizeBytes": 1,
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "uri": "https://github.com/ciprian-rus/teritoriu.digital/releases/download/siruta-2026.07.22.1/territories.csv"
+    },
     {
       "name": "territories.json",
       "mediaType": "application/json",
       "sizeBytes": 1,
       "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
-      "uri": "https://example.invalid/releases/2026.07.22.1/territories.json"
-    },
-    {
-      "name": "territories.csv",
-      "mediaType": "text/csv",
-      "sizeBytes": 1,
-      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
-      "uri": "https://example.invalid/releases/2026.07.22.1/territories.csv"
+      "uri": "https://github.com/ciprian-rus/teritoriu.digital/releases/download/siruta-2026.07.22.1/territories.json"
     },
     {
       "name": "validation-report.json",
       "mediaType": "application/json",
       "sizeBytes": 1,
       "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
-      "uri": "https://example.invalid/releases/2026.07.22.1/validation-report.json"
+      "uri": "https://github.com/ciprian-rus/teritoriu.digital/releases/download/siruta-2026.07.22.1/validation-report.json"
     }
   ]
 }
-

@@ -81,7 +81,8 @@ function databaseClient({ duplicate = false } = {}) {
                   snapshot_id: metadata.snapshotId,
                   size_bytes: metadata.sizeBytes,
                   detected_media_type: metadata.detectedMediaType,
-                  storage_uri: metadata.storageUri
+                  storage_uri: metadata.storageUri,
+                  status: "archived"
                 }
               ]
             };
@@ -93,7 +94,8 @@ function databaseClient({ duplicate = false } = {}) {
               snapshot_id: metadata.snapshotId,
               size_bytes: metadata.sizeBytes,
               detected_media_type: metadata.detectedMediaType,
-              storage_uri: metadata.storageUri
+              storage_uri: metadata.storageUri,
+              status: "downloaded"
             }
           ]
         };
@@ -107,10 +109,12 @@ test("registers metadata transactionally and treats the unique hash as idempoten
   const firstClient = databaseClient();
   const first = await registerSnapshot(source, metadata, { client: firstClient });
   assert.equal(first.created, true);
+  assert.ok(firstClient.queries.some((query) => query.includes("'archived'")));
   assert.ok(firstClient.queries.some((query) => query === "commit"));
 
   const duplicateClient = databaseClient({ duplicate: true });
   const duplicate = await registerSnapshot(source, metadata, { client: duplicateClient });
   assert.equal(duplicate.created, false);
   assert.equal(duplicate.snapshotId, metadata.snapshotId);
+  assert.ok(duplicateClient.queries.some((query) => query.includes("set status = 'archived'")));
 });
