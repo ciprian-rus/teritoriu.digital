@@ -1,3 +1,4 @@
+# Production deployments are managed by the Supabase GitHub integration on main.
 project_id = "teritoriu-digital"
 
 [api]
@@ -14,4 +15,3 @@ enabled = false
 
 [studio]
 enabled = true
-
