@@ -2,9 +2,11 @@
 
 ## Scop și limite
 
-Workflow-ul `Acquire SIRUTA` rulează independent de aplicația web. El descoperă resursa prin API-ul CKAN, validează ID-ul și URL-ul configurate, descarcă octeții sursă și oprește execuția la orice abatere neaprobată. Un eșec nu modifică datele canonice și nici canalul `stable`.
+Workflow-ul `Acquire SIRUTA` rulează independent de aplicația web. În PR rulează exclusiv gate-urile deterministe de cod și politică, fără a transforma disponibilitatea unui serviciu terț într-un verdict asupra schimbării. În rulările programate sau manuale, el descoperă resursa prin API-ul CKAN, validează ID-ul și URL-ul configurate, descarcă octeții sursă, rulează profilul canonic M2 și oprește execuția la orice abatere neaprobată. Un eșec nu modifică datele canonice și nici canalul `stable`.
 
 Programarea săptămânală rulează inițial numai `--dry-run`. Trecerea programării la `--publish` se face printr-un PR separat după două rulări manuale idempotente și aprobare explicită.
+
+Dry-run-ul programat și cel manual folosesc `--fail-on-observed-change`: dacă mărimea sau SHA-256 diferă de baseline-ul revizuit din configurație, workflow-ul afișează noile valori și eșuează. Baseline-ul se actualizează numai printr-un PR care verifică emitentul, resursa, licența, schema și raportul M2. Publicarea manuală depinde de același gate live, deci nu poate continua când sursa nu este accesibilă sau profilul s-a schimbat.
 
 Resursa observată este declarată `text/csv`, dar conținutul este XLSX. Acesta este un avertisment cunoscut și auditat; pipeline-ul acceptă exclusiv semnătura XLSX pentru această sursă.
 
@@ -38,16 +40,18 @@ Modul `--publish` cere exclusiv în mediul de execuție:
 - `SUPABASE_SERVICE_ROLE_KEY`;
 - `SUPABASE_DB_URL`.
 
-Valorile nu se introduc în repository, argumente CLI sau loguri. În GitHub se configurează ca Actions secrets. Cheia service-role are acces numai în runnerul workflow-ului; nu este disponibilă aplicației web. Rotirea unei chei presupune actualizarea secretului GitHub, o rulare `--dry-run`, o rulare `--publish`, apoi revocarea valorii vechi.
+Valorile nu se introduc în repository, argumente CLI sau loguri. În GitHub se configurează ca secrets ale environment-ului `production`, cu aprobare obligatorie. Ele sunt injectate numai în pasul manual de publicare, după ce jobul `validate` a trecut fără secrete. Cheia service-role nu este disponibilă instalării, testelor sau aplicației web. Rotirea unei chei presupune actualizarea secretului din environment, o rulare `--dry-run`, o rulare `--publish`, apoi revocarea valorii vechi.
 
 ## Garanții
 
 - HTTPS, host și port allowlistate exact;
 - rezoluția DNS este verificată, iar conexiunea folosește adresa publică deja validată;
+- fiecare cerere folosește un agent fără pooling, cu timeoutul sursei aplicat explicit socketului;
 - fiecare redirect este revalidat;
-- maximum 5 MiB, 20 secunde/încercare, maximum patru încercări;
+- maximum 5 MiB, 60 de secunde/încercare, maximum patru încercări;
 - retry numai pentru erori de rețea, timeout, `408`, `425`, `429` și `5xx`;
 - SHA-256 calculat pe octeții exacți;
+- antetul și profilul SIRUTA sunt validate înaintea oricărei scrieri;
 - cale de stocare derivată din hash și upload fără `upsert`;
 - un obiect existent este descărcat și reverificat înainte de a fi acceptat;
 - unicitate în baza de date pe `(source_id, sha256)`;
@@ -61,7 +65,9 @@ Valorile nu se introduc în repository, argumente CLI sau loguri. În GitHub se 
 3. Pentru `CKAN_RESOURCE_URL_CHANGED` sau `CKAN_RESOURCE_MISSING`, se verifică manual pagina oficială, ID-ul resursei, emitentul și licența. Orice actualizare de configurație trece prin PR.
 4. Pentru `PRIVATE_ADDRESS_BLOCKED`, `HOST_BLOCKED` sau `PROTOCOL_BLOCKED`, execuția rămâne blocată; nu se extinde allowlistul fără dovadă oficială.
 5. Pentru `MEDIA_TYPE_UNEXPECTED`, fișierul se tratează ca necunoscut și nu se parsează.
-6. Pentru o indisponibilitate temporară, se reia workflow-ul; cheia `(source_id, sha256)` previne duplicarea.
+6. Pentru `TIMEOUT`, logul indică faza (`ckan-discovery` sau `snapshot-download`), numărul de încercări consumate, durata ultimei încercări și sursa timeoutului; se reia workflow-ul numai după epuizarea retry-urilor interne.
+7. După un eșec live, workflow-ul rulează un probe `curl` fără credențiale, fără redirecturi și fără a păstra corpul răspunsului. Dacă și acesta expiră, incidentul este de disponibilitate/rutare externă; dacă răspunde, se investighează clientul Node.
+8. Pentru o indisponibilitate temporară, se reia workflow-ul; cheia `(source_id, sha256)` previne duplicarea.
 
 ## Dovezi pentru închiderea M1
 

@@ -62,13 +62,15 @@ Registrul de adresare prevăzut de propunerea legislativă este un context disti
 ```text
 .
 ├── .github/workflows/       # CI, bază de date și achiziție programată
-├── config/sources/          # surse oficiale și limite fail-closed
+├── config/
+│   ├── sources/             # surse oficiale și limite fail-closed
+│   └── transforms/          # contracte de transformare și profiluri aprobate
 ├── docs/
 │   ├── adr/                 # decizii arhitecturale
 │   ├── architecture/        # arhitectura sistemului
 │   └── governance/          # roluri și promovarea release-urilor
 ├── schemas/                 # contracte JSON Schema
-├── packages/pipeline/       # discovery, downloader și persistența snapshoturilor
+├── packages/pipeline/       # achiziție, parsare, reconciliere și staging
 ├── scripts/                 # verificări locale fără secrete
 └── supabase/
     ├── migrations/          # schema relațională/PostGIS versionată
@@ -98,8 +100,9 @@ supabase db lint --level warning
 - [Roadmap](docs/roadmap.md)
 - [Roluri și promovarea release-urilor](docs/governance/roles-and-promotion.md)
 - [Runbook achiziție SIRUTA](docs/runbooks/source-acquisition.md)
+- [Runbook candidat canonic SIRUTA](docs/runbooks/siruta-canonicalization.md)
 - [Runbook backup și restaurare](docs/runbooks/backup-restore.md)
 
 ## Stare
 
-Proiectul finalizează **M0** și implementează **M1 — achiziția controlată**. Schema internă este neexpusă public; închiderea etapelor mai cere dovezile live și deciziile enumerate în roadmap.
+Proiectul finalizează **M0**, are implementată achiziția controlată M1 și construiește **M2 — modelul canonic**. Schema internă este neexpusă public; închiderea etapelor mai cere dovezile live și deciziile enumerate în roadmap.

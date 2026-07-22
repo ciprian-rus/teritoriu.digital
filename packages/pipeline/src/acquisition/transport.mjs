@@ -62,11 +62,21 @@ async function readBody(response, maxBytes) {
 
 export function nodeTransport(url, options) {
   const client = url.protocol === "https:" ? https : http;
+  // Node's shared agent may impose a shorter socket timeout than the reviewed
+  // source policy. A one-request agent keeps the timeout boundary explicit and
+  // prevents a pooled socket from carrying state between validated targets.
+  const agent = new client.Agent({
+    keepAlive: false,
+    timeout: options.timeoutMs
+  });
+  const startedAt = Date.now();
+  const elapsedMs = () => Date.now() - startedAt;
   return new Promise((resolve, reject) => {
     const request = client.request(
       url,
       {
         method: "GET",
+        agent,
         headers: options.headers,
         lookup: safeLookup(options.resolvedAddresses),
         signal: options.signal
@@ -90,12 +100,17 @@ export function nodeTransport(url, options) {
     request.setTimeout(options.timeoutMs, () => {
       request.destroy(
         new AcquisitionError("TIMEOUT", `Request exceeded ${options.timeoutMs} ms`, {
-          retryable: true
+          retryable: true,
+          context: {
+            elapsedMs: elapsedMs(),
+            timeoutSource: "socket-inactivity"
+          }
         })
       );
     });
     request.on("error", (cause) => {
       if (cause instanceof AcquisitionError) {
+        cause.context = { elapsedMs: elapsedMs(), ...cause.context };
         reject(cause);
         return;
       }
@@ -104,10 +119,19 @@ export function nodeTransport(url, options) {
         new AcquisitionError(
           aborted ? "TIMEOUT" : "NETWORK_FAILED",
           aborted ? `Request exceeded ${options.timeoutMs} ms` : "Network request failed",
-          { cause, retryable: true }
+          {
+            cause,
+            retryable: true,
+            context: {
+              causeCode: typeof cause?.code === "string" ? cause.code : undefined,
+              elapsedMs: elapsedMs(),
+              timeoutSource: aborted ? "request-deadline" : undefined
+            }
+          }
         )
       );
     });
+    request.on("close", () => agent.destroy());
     request.end();
   });
 }

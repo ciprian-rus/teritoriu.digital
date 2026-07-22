@@ -23,11 +23,10 @@ Divizările, comasările și reorganizările nu transferă automat identitatea. 
 
 ## Control
 
-Domeniul PostgreSQL `registry.uuid_v7` validează versiunea UUID. Deciziile de potrivire sunt auditate în `identity_decisions`; potrivirile ambigue blochează promovarea automată.
+Domeniul PostgreSQL `registry.uuid_v7` validează versiunea și biții de variantă RFC. Deciziile de potrivire sunt auditate în `identity_decisions`; potrivirile ambigue blochează promovarea automată.
 
 ## Consecințe
 
 - Consumatorii pot păstra referințe stabile peste schimbări de nume și cod.
 - Importul trebuie să aibă o etapă explicită de reconciliere, nu doar `upsert` după SIRUTA.
 - Corectarea unei potriviri greșite necesită o decizie auditabilă și un release nou, niciodată editarea retroactivă a unui release publicat.
-

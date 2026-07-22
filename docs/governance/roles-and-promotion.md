@@ -12,6 +12,8 @@
 
 Aceeași persoană poate îndeplini temporar mai multe roluri în faza de prototip, dar sistemul păstrează acțiunile și motivările separat.
 
+Workflow-urile care folosesc acces privilegiat rulează numai din `main` prin environment-ul GitHub `production`. Secretele Supabase sunt stocate în acel environment, nu la nivelul repository-ului, iar un reviewer obligatoriu aprobă accesul. Instalarea, testele și dry-run-urile nu primesc secrete. Ideal, persoana care declanșează publicarea și persoana care aprobă environment-ul sunt diferite; în faza de prototip, excepția temporară se consemnează în audit.
+
 ## Porți de promovare
 
 1. Snapshotul este arhivat și SHA-256 este verificat.
@@ -34,4 +36,3 @@ O sesizare primește referință publică, categorie, entitatea afectată și st
 ## Incident și rollback
 
 La un incident de date, canalul `stable` poate fi mutat la ultimul release cunoscut ca valid. Release-ul problematic rămâne în istoric, este marcat în comunicarea incidentului, iar remedierea produce o versiune nouă. Restaurarea bazei de control nu este mecanismul normal de rollback public.
-

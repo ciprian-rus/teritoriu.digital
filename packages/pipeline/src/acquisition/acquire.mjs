@@ -4,19 +4,54 @@ import { downloadSnapshot } from "./downloader.mjs";
 import { registerSnapshot } from "./postgres-metadata.mjs";
 import { archiveInSupabase } from "./supabase-archive.mjs";
 
+function withPhase(error, phase) {
+  if (error && typeof error === "object") {
+    error.context = { ...(error.context ?? {}), phase };
+  }
+  return error;
+}
+
 export async function acquireSource(source, options = {}) {
-  const discovery = options.skipDiscovery
-    ? { resourceUrl: source.resourceUrl, skipped: true }
-    : await discoverCkanResource(source, options.dependencies);
-  const download = await downloadSnapshot(
-    { ...source, resourceUrl: discovery.resourceUrl },
-    options.dependencies
-  );
+  let discovery;
+  try {
+    discovery = options.skipDiscovery
+      ? { resourceUrl: source.resourceUrl, skipped: true }
+      : await discoverCkanResource(source, options.dependencies);
+  } catch (error) {
+    throw withPhase(error, "ckan-discovery");
+  }
+
+  let download;
+  try {
+    download = await downloadSnapshot(
+      { ...source, resourceUrl: discovery.resourceUrl },
+      options.dependencies
+    );
+  } catch (error) {
+    throw withPhase(error, "snapshot-download");
+  }
   download.discovery = discovery;
 
   if (options.expectedSha256 && download.sha256 !== options.expectedSha256) {
     const error = new Error("Downloaded snapshot does not match the explicitly required SHA-256");
     error.code = "SHA256_MISMATCH";
+    error.context = { phase: "snapshot-integrity" };
+    throw error;
+  }
+
+  let validation;
+  try {
+    validation = options.snapshotValidator
+      ? await options.snapshotValidator(download.bytes)
+      : null;
+  } catch (error) {
+    throw withPhase(error, "canonical-validation");
+  }
+  if (validation?.status === "blocked") {
+    const error = new Error("The downloaded snapshot failed blocking canonical validations");
+    error.code = "SNAPSHOT_VALIDATION_BLOCKED";
+    error.context = { phase: "canonical-validation" };
+    error.validation = validation;
     throw error;
   }
 
@@ -31,6 +66,7 @@ export async function acquireSource(source, options = {}) {
       mode: options.dryRun ? "dry-run" : "local",
       download,
       metadata: local.metadata,
+      validation,
       archiveCreated: local.created,
       snapshotCreated: false
     };
@@ -42,6 +78,7 @@ export async function acquireSource(source, options = {}) {
       mode: "dry-run",
       download,
       metadata,
+      validation,
       archiveCreated: false,
       snapshotCreated: false
     };
@@ -61,6 +98,7 @@ export async function acquireSource(source, options = {}) {
     mode: "publish",
     download,
     metadata: { ...metadata, snapshotId: registration.snapshotId },
+    validation,
     archiveCreated: archive.created,
     snapshotCreated: registration.created
   };

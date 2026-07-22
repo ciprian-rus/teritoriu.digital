@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "transformationVersion": "siruta-2025.1.0.0",
+  "expectedHeaders": [
+    "SIRUTA",
+    "DENLOC",
+    "CODP",
+    "JUD",
+    "SIRSUP",
+    "TIP",
+    "NIV",
+    "MED",
+    "REGIUNE",
+    "FSJ",
+    "FSL",
+    "NUTS"
+  ],
+  "expectedProfile": {
+    "totalRows": 16978,
+    "levels": {
+      "1": 42,
+      "2": 3181,
+      "3": 13755
+    },
+    "checksumWarnings": 77,
+    "nutsMissingValues": 215
+  },
+  "xlsxLimits": {
+    "maxEntries": 512,
+    "maxUncompressedBytes": 67108864,
+    "maxEntryUncompressedBytes": 33554432,
+    "maxCompressionRatio": 200
+  },
+  "diffThresholds": {
+    "maxTotalDeltaRatio": 0.02,
+    "maxRemovedRatio": 0.01,
+    "maxChangedRatio": 0.25
+  }
+}

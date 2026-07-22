@@ -22,14 +22,13 @@ stateDiagram-v2
     [*] --> Downloaded
     Downloaded --> Staged: semnătură și SHA valide
     Staged --> Blocked: validare eșuată
-    Staged --> Review: diferențe semnificative
+    Staged --> Review: candidat și diff
     Review --> Approved: decizie documentată
-    Staged --> Approved: fără praguri încălcate
     Approved --> Published: artefacte verificate
     Published --> [*]
 ```
 
-Nicio etapă eșuată nu schimbă canalul `stable`. O rerulare folosește același snapshot și o cheie de idempotentă derivată din sursă, checksum și versiunea pipeline-ului.
+Nicio etapă eșuată nu schimbă canalul `stable`, iar un candidat nu sare peste review. O rerulare folosește același snapshot și o cheie de idempotentă derivată din SHA-256 al snapshotului și versiunea transformării.
 
 ## Bitemporalitate
 
@@ -42,7 +41,7 @@ Această separare permite reconstituirea stării publicate la o dată și explic
 
 ## Limita Supabase
 
-Schema `registry` este un plan de control, nu un API public. Nu este inclusă în `api.schemas` din configurația locală. Pipeline-ul folosește o cheie secretă server-side dedicată; browserul nu primește privilegii de scriere. API-ul public va citi numai proiecții promovate sau artefacte de release și va avea cache, ETag și rate limiting.
+Schema `registry` este un plan de control, nu un API public. Nu este inclusă în `api.schemas` din configurația locală. Operațiile privilegiate rulează numai din `main`, prin environment-ul GitHub protejat `production`; secretele sunt injectate exclusiv în pașii care descarcă, arhivează sau scriu staging, niciodată în instalare, teste ori browser. API-ul public va citi numai proiecții promovate sau artefacte de release și va avea cache, ETag și rate limiting.
 
 ## Disponibilitate și recuperare
 
@@ -50,4 +49,3 @@ Schema `registry` este un plan de control, nu un API public. Nu este inclusă î
 - Snapshoturile brute și artefactele publice nu au un singur punct de stocare.
 - Backup-ul bazei de control și restaurarea se testează periodic.
 - Pointerul `stable` poate reveni la un release anterior fără a modifica release-urile.
-

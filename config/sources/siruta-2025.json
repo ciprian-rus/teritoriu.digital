@@ -20,7 +20,7 @@
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
   ],
   "maxBytes": 5242880,
-  "timeoutMs": 20000,
+  "timeoutMs": 60000,
   "maxAttempts": 4,
   "maxRedirects": 5,
   "observedSnapshot": {

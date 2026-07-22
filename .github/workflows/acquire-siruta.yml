@@ -1,6 +1,16 @@
 name: Acquire SIRUTA
 
 on:
+  pull_request:
+    paths:
+      - ".github/workflows/acquire-siruta.yml"
+      - "config/sources/**"
+      - "config/transforms/**"
+      - "package.json"
+      - "package-lock.json"
+      - "packages/pipeline/src/acquisition/**"
+      - "packages/pipeline/src/canonical/**"
+      - "scripts/acquire-siruta.mjs"
   schedule:
     - cron: "17 4 * * 3"
   workflow_dispatch:
@@ -26,13 +36,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  acquire:
+  validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    env:
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -45,12 +51,58 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Unit and policy tests
         run: npm test
-      - name: Acquire official snapshot
+      - name: Validate official snapshot without writes
+        if: github.event_name != 'pull_request'
         env:
-          REQUESTED_MODE: ${{ github.event_name == 'schedule' && 'dry-run' || inputs.mode }}
-          EXPECTED_SHA256: ${{ inputs.expected_sha256 }}
+          EXPECTED_SHA256: ${{ github.event_name == 'workflow_dispatch' && inputs.expected_sha256 || '' }}
         run: |
-          args=("--${REQUESTED_MODE}")
+          args=("--dry-run" "--fail-on-observed-change")
+          if [[ -n "${EXPECTED_SHA256}" ]]; then
+            args+=("--expected-sha256" "${EXPECTED_SHA256}")
+          fi
+          npm run acquire:siruta -- "${args[@]}"
+      - name: Diagnose CKAN reachability after a failure
+        if: failure() && github.event_name != 'pull_request'
+        continue-on-error: true
+        run: |
+          set +e
+          metrics=$(curl \
+            --silent --show-error \
+            --connect-timeout 10 \
+            --max-time 30 \
+            --max-filesize 2097152 \
+            --output /dev/null \
+            --write-out 'status=%{http_code} elapsed=%{time_total}' \
+            'https://data.gov.ro/api/3/action/package_show?id=siruta_an-2025')
+          result=$?
+          set -e
+          echo "CKAN diagnostic: ${metrics} curl_exit=${result}"
+          exit "${result}"
+
+  publish:
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'publish' && github.ref == 'refs/heads/main'
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install
+        run: npm ci --ignore-scripts
+      - name: Archive and register official snapshot
+        env:
+          EXPECTED_SHA256: ${{ inputs.expected_sha256 }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          args=("--publish")
           if [[ -n "${EXPECTED_SHA256}" ]]; then
             args+=("--expected-sha256" "${EXPECTED_SHA256}")
           fi
