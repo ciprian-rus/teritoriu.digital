@@ -7,6 +7,9 @@ Stare de discovery la 22 iulie 2026. Nicio resursă nu este promovată doar pent
 - Instituție: Institutul Național de Statistică
 - Rol: sursă autoritativă pentru clasificarea și codurile SIRUTA; nu este tratată automat ca sursă juridică pentru orice limită geografică
 - Dataset: <https://data.gov.ro/dataset/siruta_an-2025>
+- API CKAN: <https://data.gov.ro/api/3/action/package_show?id=siruta_an-2025>
+- ID resursă: `2a9be5d1-f74f-40f1-b549-b6c6cfcda968`
+- URL de descărcare observat: <https://data.gov.ro/dataset/06950cb3-41b7-48b8-91bb-4a329786d178/resource/2a9be5d1-f74f-40f1-b549-b6c6cfcda968/download/siruta_an_2025.csv>
 - Licență declarată: CC BY 4.0
 - Frecvență descrisă în metodologie: semestrială
 - Format declarat: CSV; fișierul observat are semnătură XLSX și trebuie detectat după conținut
@@ -43,4 +46,3 @@ Discovery-ul inițial a identificat 3.186 geometrii cu coduri regăsite în SIRU
 ## Surse viitoare
 
 Eurostat/GISCO, actele normative și alte nomenclatoare se adaugă numai după documentarea instituției, rolului, licenței, frecvenței, identificatorilor, limitărilor și regulilor de transformare.
-

@@ -8,7 +8,12 @@
   },
   "scripts": {
     "check": "node scripts/validate-foundation.mjs",
-    "test": "npm run check"
+    "test:unit": "node --test",
+    "test": "npm run check && npm run test:unit",
+    "acquire:siruta": "node scripts/acquire-siruta.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.110.8",
+    "pg": "8.22.0"
   }
 }
-

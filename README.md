@@ -61,12 +61,14 @@ Registrul de adresare prevăzut de propunerea legislativă este un context disti
 
 ```text
 .
-├── .github/workflows/       # verificări de fundație și bază de date
+├── .github/workflows/       # CI, bază de date și achiziție programată
+├── config/sources/          # surse oficiale și limite fail-closed
 ├── docs/
 │   ├── adr/                 # decizii arhitecturale
 │   ├── architecture/        # arhitectura sistemului
 │   └── governance/          # roluri și promovarea release-urilor
 ├── schemas/                 # contracte JSON Schema
+├── packages/pipeline/       # discovery, downloader și persistența snapshoturilor
 ├── scripts/                 # verificări locale fără secrete
 └── supabase/
     ├── migrations/          # schema relațională/PostGIS versionată
@@ -95,8 +97,9 @@ supabase db lint --level warning
 - [Registrul inițial al surselor](docs/source-registry.md)
 - [Roadmap](docs/roadmap.md)
 - [Roluri și promovarea release-urilor](docs/governance/roles-and-promotion.md)
+- [Runbook achiziție SIRUTA](docs/runbooks/source-acquisition.md)
+- [Runbook backup și restaurare](docs/runbooks/backup-restore.md)
 
 ## Stare
 
-Proiectul este în **M0 — fundație, decizii și repository**. Schema inițială este intenționat neexpusă public și trebuie validată într-un proiect Supabase Preview înainte de integrarea în `main`.
-
+Proiectul finalizează **M0** și implementează **M1 — achiziția controlată**. Schema internă este neexpusă public; închiderea etapelor mai cere dovezile live și deciziile enumerate în roadmap.

@@ -1,0 +1,67 @@
+import { archiveLocally, snapshotMetadata } from "./archive.mjs";
+import { discoverCkanResource } from "./ckan-discovery.mjs";
+import { downloadSnapshot } from "./downloader.mjs";
+import { registerSnapshot } from "./postgres-metadata.mjs";
+import { archiveInSupabase } from "./supabase-archive.mjs";
+
+export async function acquireSource(source, options = {}) {
+  const discovery = options.skipDiscovery
+    ? { resourceUrl: source.resourceUrl, skipped: true }
+    : await discoverCkanResource(source, options.dependencies);
+  const download = await downloadSnapshot(
+    { ...source, resourceUrl: discovery.resourceUrl },
+    options.dependencies
+  );
+  download.discovery = discovery;
+
+  if (options.expectedSha256 && download.sha256 !== options.expectedSha256) {
+    const error = new Error("Downloaded snapshot does not match the explicitly required SHA-256");
+    error.code = "SHA256_MISMATCH";
+    throw error;
+  }
+
+  if (options.localArchiveDirectory) {
+    const local = await archiveLocally(
+      options.localArchiveDirectory,
+      source,
+      download,
+      { dryRun: options.dryRun }
+    );
+    return {
+      mode: options.dryRun ? "dry-run" : "local",
+      download,
+      metadata: local.metadata,
+      archiveCreated: local.created,
+      snapshotCreated: false
+    };
+  }
+
+  const metadata = snapshotMetadata(source, download);
+  if (options.dryRun) {
+    return {
+      mode: "dry-run",
+      download,
+      metadata,
+      archiveCreated: false,
+      snapshotCreated: false
+    };
+  }
+
+  const archive = await archiveInSupabase(metadata, download.bytes, {
+    supabaseUrl: options.supabaseUrl,
+    serviceRoleKey: options.serviceRoleKey,
+    client: options.supabaseClient
+  });
+  const registration = await registerSnapshot(source, metadata, {
+    connectionString: options.databaseUrl,
+    client: options.databaseClient
+  });
+
+  return {
+    mode: "publish",
+    download,
+    metadata: { ...metadata, snapshotId: registration.snapshotId },
+    archiveCreated: archive.created,
+    snapshotCreated: registration.created
+  };
+}

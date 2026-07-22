@@ -7,9 +7,14 @@ const requiredFiles = [
   "docs/adr/0003-immutable-releases.md",
   "docs/data-contract.md",
   "docs/law-alignment.md",
+  "config/sources/siruta-2025.json",
+  "packages/pipeline/src/acquisition/ckan-discovery.mjs",
+  "packages/pipeline/src/acquisition/downloader.mjs",
+  "packages/pipeline/src/acquisition/network-policy.mjs",
   "schemas/release-manifest.schema.json",
   "schemas/territory.schema.json",
-  "supabase/migrations/202607220001_initial_registry.sql"
+  "supabase/migrations/202607220001_initial_registry.sql",
+  "supabase/migrations/202607220002_source_snapshot_storage.sql"
 ];
 
 const errors = [];
@@ -28,6 +33,7 @@ for (const path of requiredFiles) {
 }
 
 for (const path of [
+  "config/sources/siruta-2025.json",
   "schemas/release-manifest.schema.json",
   "schemas/territory.schema.json",
   "schemas/examples/release-manifest.example.json"
@@ -68,6 +74,7 @@ const manifestSchema = JSON.parse(
   await load("schemas/release-manifest.schema.json")
 );
 const territorySchema = JSON.parse(await load("schemas/territory.schema.json"));
+const sirutaSource = JSON.parse(await load("config/sources/siruta-2025.json"));
 
 for (const [name, schema] of Object.entries({ manifestSchema, territorySchema })) {
   if (schema.$schema !== "https://json-schema.org/draft/2020-12/schema") {
@@ -78,10 +85,23 @@ for (const [name, schema] of Object.entries({ manifestSchema, territorySchema })
   }
 }
 
+if (!sirutaSource.allowedHosts?.includes("data.gov.ro")) {
+  errors.push("SIRUTA source must explicitly allowlist data.gov.ro");
+}
+if (sirutaSource.allowedProtocols?.some((protocol) => protocol !== "https:")) {
+  errors.push("SIRUTA production source must allow HTTPS only");
+}
+if (sirutaSource.maxBytes > 5 * 1024 * 1024) {
+  errors.push("SIRUTA acquisition limit exceeds the approved 5 MiB boundary");
+}
+const serializedSource = JSON.stringify(sirutaSource);
+if (/service_role|sb_secret_|postgres(?:ql)?:\/\//i.test(serializedSource)) {
+  errors.push("source configuration must not contain database URLs or privileged keys");
+}
+
 if (errors.length > 0) {
   console.error(`Foundation validation failed:\n- ${errors.join("\n- ")}`);
   process.exit(1);
 }
 
 console.log(`Foundation validation passed (${requiredFiles.length} required files).`);
-
