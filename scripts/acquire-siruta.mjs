@@ -13,17 +13,22 @@ function usage() {
   npm run acquire:siruta -- --dry-run [--expected-sha256 <sha>] [--fail-on-observed-change]
   npm run acquire:siruta -- --archive-dir <path> [--expected-sha256 <sha>]
   npm run acquire:siruta -- --publish [--expected-sha256 <sha>]
+  npm run acquire:siruta -- --publish --direct-resource
   npm run acquire:siruta -- --manual-file <path> --expected-sha256 <sha> --expected-size <bytes> --provenance-url <url> --publish
+
+--direct-resource downloads the allowlisted official resource URL without CKAN discovery.
+It is intended for the scheduled source mirror; all integrity and canonical validation gates remain active.
 
 Publish mode requires SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and SUPABASE_DB_URL.`;
 }
 
 function parseArguments(args) {
-  const result = { dryRun: false, publish: false };
+  const result = { dryRun: false, publish: false, directResource: false };
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
     if (argument === "--dry-run") result.dryRun = true;
     else if (argument === "--publish") result.publish = true;
+    else if (argument === "--direct-resource") result.directResource = true;
     else if (argument === "--archive-dir") result.localArchiveDirectory = args[++index];
     else if (argument === "--expected-sha256") result.expectedSha256 = args[++index];
     else if (argument === "--expected-size") result.expectedSize = Number(args[++index]);
@@ -40,6 +45,12 @@ function parseArguments(args) {
   }
   if (result.expectedSha256 && !/^[0-9a-f]{64}$/.test(result.expectedSha256)) {
     throw new Error("--expected-sha256 must contain 64 lowercase hexadecimal characters");
+  }
+  if (result.directResource && result.manualFile) {
+    throw new Error("--direct-resource cannot be combined with --manual-file");
+  }
+  if (result.directResource && !result.publish && !result.dryRun) {
+    throw new Error("--direct-resource requires --publish or --dry-run");
   }
   if (result.manualFile) {
     if (!result.publish) throw new Error("--manual-file requires --publish");
@@ -106,6 +117,7 @@ try {
     dryRun: args.dryRun,
     localArchiveDirectory: args.localArchiveDirectory,
     expectedSha256: args.expectedSha256,
+    skipDiscovery: args.directResource,
     snapshotValidator: (bytes) => validateSirutaSnapshot(bytes, transformation)
   };
   if (args.manualFile) {
@@ -133,6 +145,11 @@ try {
         ok: !baselineChanged,
         code: baselineChanged ? "OBSERVED_SNAPSHOT_CHANGED" : undefined,
         mode: result.mode,
+        acquisitionChannel: args.manualFile
+          ? "manual-bootstrap"
+          : args.directResource
+            ? "official-direct-mirror"
+            : "ckan-discovery",
         source: source.slug,
         snapshotId: result.metadata.snapshotId,
         sha256: result.download.sha256,
@@ -149,6 +166,7 @@ try {
           : null,
         archiveCreated: result.archiveCreated,
         snapshotCreated: result.snapshotCreated,
+        changeDetected: result.mode === "publish" ? result.snapshotCreated : !matchesObservedSnapshot,
         matchesObservedSnapshot
       },
       null,
