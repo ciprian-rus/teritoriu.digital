@@ -17,9 +17,9 @@ export const HEADERS = [
 
 export const ROWS = [
   HEADERS,
-  [1, "JUDEȚUL TEST", 0, 1, 0, 40, 1, 0, 1, 0, 0, "RO000"],
-  [2, "COMUNA TEST", 0, 1, 1, 3, 2, 3, 1, 0, 0, null],
-  [3, "SAT TEST", 0, 1, 2, 22, 3, 3, 1, 0, 0, null]
+  [1, "JUDEȚUL TEST", 0, 1, 0, 40, 1, 0, 1, 0, "0100000000000", "RO000"],
+  [2, "COMUNA TEST", 0, 1, 1, 3, 2, 3, 1, 0, "0101000000000", null],
+  [3, "SAT TEST", 0, 1, 2, 22, 3, 3, 1, 0, "0101010000000", null]
 ];
 
 export const CONFIGURATION = {
