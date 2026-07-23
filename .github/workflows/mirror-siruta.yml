@@ -4,6 +4,23 @@ on:
   schedule:
     - cron: "17 4 * * 3"
   workflow_dispatch:
+    inputs:
+      storage_object_path:
+        description: "Private source-snapshots object under bootstrap/ (leave empty for official mirror)"
+        required: false
+        type: string
+      expected_sha256:
+        description: "Required lowercase SHA-256 for storage bootstrap"
+        required: false
+        type: string
+      expected_size:
+        description: "Required exact byte size for storage bootstrap"
+        required: false
+        type: string
+      provenance_url:
+        description: "Required allowlisted official source URL for storage bootstrap"
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -31,11 +48,30 @@ jobs:
       - name: Unit and policy tests
         run: npm test
       - name: Validate, mirror and register official snapshot
+        if: github.event_name == 'schedule' || inputs.storage_object_path == ''
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: npm run acquire:siruta -- --publish --direct-resource
+
+      - name: Bootstrap verified snapshot from private storage
+        if: github.event_name == 'workflow_dispatch' && inputs.storage_object_path != ''
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          STORAGE_OBJECT_PATH: ${{ inputs.storage_object_path }}
+          EXPECTED_SHA256: ${{ inputs.expected_sha256 }}
+          EXPECTED_SIZE: ${{ inputs.expected_size }}
+          PROVENANCE_URL: ${{ inputs.provenance_url }}
+        run: |
+          npm run acquire:siruta -- \
+            --publish \
+            --storage-object "$STORAGE_OBJECT_PATH" \
+            --expected-sha256 "$EXPECTED_SHA256" \
+            --expected-size "$EXPECTED_SIZE" \
+            --provenance-url "$PROVENANCE_URL"
 
       - name: Explain promotion boundary
         if: success()
