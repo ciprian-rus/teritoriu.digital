@@ -27,7 +27,7 @@ export async function loadSirutaIdentityIndex(client) {
     from registry.territory_identifiers identifier
     where identifier.scheme = 'ro.ins.siruta'
     union all
-    select
+    select distinct
       decision.source_record_key as value,
       decision.proposed_territory_id::text as territory_id,
       'proposed'::text as status,
@@ -41,7 +41,11 @@ export async function loadSirutaIdentityIndex(client) {
     order by value, territory_id, origin
   `);
   const index = {};
+  const seenProposals = new Set();
   for (const row of result.rows) {
+    const proposalKey = `${row.value}\u0000${row.territory_id}`;
+    if (row.origin === "proposal" && seenProposals.has(proposalKey)) continue;
+    if (row.origin === "proposal") seenProposals.add(proposalKey);
     index[row.value] ??= [];
     index[row.value].push({
       territoryId: row.territory_id,
