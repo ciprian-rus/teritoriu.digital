@@ -42,6 +42,23 @@ export function resolvedSirutaParent(record, configuration = {}) {
   return record.parentSiruta;
 }
 
+export function resolvedSirutaNuts(record, configuration = {}) {
+  const correction =
+    configuration.reviewedSourceExceptions?.nutsCountyCorrections?.[record.countyCode];
+  if (!correction || record.nuts !== correction.sourceValue) {
+    return { value: record.nuts, correction: null };
+  }
+  return {
+    value: correction.canonicalValue,
+    correction: {
+      field: "NUTS",
+      sourceValue: record.nuts,
+      canonicalValue: correction.canonicalValue,
+      ruleCode: "SIRUTA_REVIEWED_NUTS_CORRECTION"
+    }
+  };
+}
+
 function detectCycles(bySiruta, configuration) {
   const state = new Map();
   const cycles = [];
@@ -84,8 +101,13 @@ export function validateSirutaRecords(parsed, configuration) {
   const nutsByCountyCode = new Map();
   const recordTypeDefinitions =
     configuration.reviewedSourceExceptions?.recordTypeDefinitions ?? {};
+  const nutsCountyCorrections =
+    configuration.reviewedSourceExceptions?.nutsCountyCorrections ?? {};
   const rootParentSentinel =
     configuration.reviewedSourceExceptions?.rootParentSentinel;
+  const nutsCorrectionCounts = new Map(
+    Object.keys(nutsCountyCorrections).map((countyCode) => [countyCode, 0])
+  );
   let rootParentSentinels = 0;
 
   for (const { parsedRecord: record } of validRecords) {
@@ -156,30 +178,42 @@ export function validateSirutaRecords(parsed, configuration) {
     }
 
     if (record.nuts) {
-      if (!/^RO[0-9A-Z]{3}$/.test(record.nuts)) {
+      const nutsResolution = resolvedSirutaNuts(record, configuration);
+      const canonicalNuts = nutsResolution.value;
+      if (nutsResolution.correction) {
+        nutsCorrectionCounts.set(
+          record.countyCode,
+          (nutsCorrectionCounts.get(record.countyCode) ?? 0) + 1
+        );
+      }
+      if (!/^RO[0-9A-Z]{3}$/.test(canonicalNuts)) {
         findings.push(
           finding(
             "SIRUTA_NUTS_FORMAT_INVALID",
             "blocker",
             "A populated NUTS value does not match the reviewed Romanian NUTS3 format",
-            { nuts: record.nuts },
+            { sourceNuts: record.nuts, canonicalNuts },
             record.siruta
           )
         );
       }
       const knownNuts = nutsByCountyCode.get(record.countyCode);
-      if (knownNuts && knownNuts !== record.nuts) {
+      if (knownNuts && knownNuts !== canonicalNuts) {
         findings.push(
           finding(
             "SIRUTA_NUTS_COUNTY_CONFLICT",
             "blocker",
             "Records in one county expose conflicting NUTS3 identifiers",
-            { countyCode: record.countyCode, observed: [knownNuts, record.nuts].sort() },
+            {
+              countyCode: record.countyCode,
+              observed: [knownNuts, canonicalNuts].sort(),
+              sourceNuts: record.nuts
+            },
             record.siruta
           )
         );
       } else {
-        nutsByCountyCode.set(record.countyCode, record.nuts);
+        nutsByCountyCode.set(record.countyCode, canonicalNuts);
       }
     }
 
@@ -209,6 +243,89 @@ export function validateSirutaRecords(parsed, configuration) {
           "A record with a reviewed SIRUTA type override is absent from the snapshot",
           { siruta },
           siruta
+        )
+      );
+    }
+  }
+
+  for (const [countyCode, correction] of Object.entries(nutsCountyCorrections)) {
+    const county = bySiruta.get(correction.countySiruta);
+    if (!county) {
+      findings.push(
+        finding(
+          "SIRUTA_REVIEWED_NUTS_CORRECTION_MISSING",
+          "blocker",
+          "The county anchoring a reviewed NUTS correction is absent from the snapshot",
+          { countyCode, countySiruta: correction.countySiruta },
+          correction.countySiruta
+        )
+      );
+      continue;
+    }
+    if (
+      county.countyCode !== countyCode ||
+      county.typeCode !== 40 ||
+      county.level !== 1 ||
+      county.nuts !== correction.sourceValue
+    ) {
+      findings.push(
+        finding(
+          "SIRUTA_REVIEWED_NUTS_CORRECTION_MISMATCH",
+          "blocker",
+          "The source county no longer matches its reviewed NUTS correction",
+          {
+            expected: {
+              countyCode,
+              countySiruta: correction.countySiruta,
+              typeCode: 40,
+              level: 1,
+              sourceValue: correction.sourceValue
+            },
+            observed: {
+              countyCode: county.countyCode,
+              countySiruta: county.siruta,
+              typeCode: county.typeCode,
+              level: county.level,
+              sourceValue: county.nuts
+            }
+          },
+          correction.countySiruta
+        )
+      );
+    }
+    const observedCount = nutsCorrectionCounts.get(countyCode) ?? 0;
+    if (observedCount !== correction.expectedRecordCount) {
+      findings.push(
+        finding(
+          "SIRUTA_REVIEWED_NUTS_CORRECTION_COUNT_CHANGED",
+          "blocker",
+          "The reviewed source NUTS value occurs a different number of times in its county",
+          {
+            countyCode,
+            sourceValue: correction.sourceValue,
+            expected: correction.expectedRecordCount,
+            observed: observedCount
+          },
+          correction.countySiruta
+        )
+      );
+    }
+  }
+
+  const countyCodesByNuts = new Map();
+  for (const [countyCode, nuts] of nutsByCountyCode) {
+    const countyCodes = countyCodesByNuts.get(nuts) ?? [];
+    countyCodes.push(countyCode);
+    countyCodesByNuts.set(nuts, countyCodes);
+  }
+  for (const [nuts, countyCodes] of countyCodesByNuts) {
+    if (countyCodes.length > 1) {
+      findings.push(
+        finding(
+          "SIRUTA_NUTS_DUPLICATE_COUNTY_IDENTIFIER",
+          "blocker",
+          "One canonical NUTS3 identifier is assigned to more than one county",
+          { nuts, countyCodes: countyCodes.sort() }
         )
       );
     }
@@ -381,6 +498,18 @@ export function validateSirutaRecords(parsed, configuration) {
     );
   }
 
+  const nuts3Codes = new Set(nutsByCountyCode.values()).size;
+  if (nuts3Codes !== expectedProfile.nuts3Codes) {
+    findings.push(
+      finding(
+        "SIRUTA_NUTS3_VOLUME_CHANGED",
+        "blocker",
+        "The number of canonical county NUTS3 identifiers differs from the reviewed baseline",
+        { expected: expectedProfile.nuts3Codes, observed: nuts3Codes }
+      )
+    );
+  }
+
   const summary = summarizeFindings(findings);
   return {
     ...summary,
@@ -390,7 +519,7 @@ export function validateSirutaRecords(parsed, configuration) {
       levels: levelCounts,
       uniqueSirutaCodes: bySiruta.size,
       countyCodes: countyByCode.size,
-      nuts3Codes: new Set(nutsByCountyCode.values()).size,
+      nuts3Codes,
       rootParentSentinels,
       checksumWarnings: invalidChecksums.length,
       nutsMissingValues: missingNuts.length

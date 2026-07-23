@@ -56,9 +56,9 @@ Aceleași intrări produc aceiași octeți. Fișierele sunt create cu `create-on
 
 Workflow: `Publish SIRUTA Release`, `mode=publish`.
 
-Înaintea oricărei publicări, workflow-ul verifică vizibilitatea repository-ului și confirmarea setării de imutabilitate. GitHub Release este pregătit ca draft, toate fișierele sunt descărcate din nou și verificate, apoi release-ul este publicat. Dacă tagul public există deja, octeții trebuie să fie identici; nu se folosește `--clobber` pe un release publicat.
+Înaintea oricărei publicări, workflow-ul verifică vizibilitatea repository-ului și confirmarea setării de imutabilitate. GitHub Release este pregătit ca draft, toate fișierele sunt descărcate din nou și verificate, iar draftul rămâne nepublic până după promovarea reușită în registru. Dacă tagul public există deja, octeții trebuie să fie identici și baza trebuie să conțină deja aceeași promovare finalizată; un release public nu poate iniția o promovare lipsă. Nu se folosește `--clobber` pe un release publicat.
 
-Abia după verificarea release-ului public, tranzacția PostgreSQL:
+După verificarea artefactelor din draft, tranzacția PostgreSQL:
 
 1. reverifică aprobarea, snapshotul, commitul și canalul anterior;
 2. compară fiecare `territory_id` cu decizia M2;
@@ -69,6 +69,8 @@ Abia după verificarea release-ului public, tranzacția PostgreSQL:
 7. marchează importul `completed` și scrie auditul.
 
 Toate scrierile de mai sus au un singur commit. Dacă tranzacția eșuează, release-ul GitHub poate exista, dar `stable` nu se schimbă; reluarea verifică octeții existenți și reîncearcă numai promovarea.
+
+Numai după commitul tranzacției, workflow-ul publică GitHub Release-ul și descarcă încă o dată activele publice pentru comparație. Dacă promovarea eșuează, release-ul rămâne draft și nu există un release public parțial. Dacă publicarea finală este întreruptă după promovare, aceeași rulare poate fi reluată: promovarea exactă devine no-op, apoi draftul este publicat.
 
 ## Verificare independentă
 

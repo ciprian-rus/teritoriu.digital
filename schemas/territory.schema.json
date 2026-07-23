@@ -98,7 +98,23 @@
           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
         },
         "sourceRecordHash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-        "transformationVersion": { "type": ["string", "null"] }
+        "transformationVersion": { "type": ["string", "null"] },
+        "sourceCorrections": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["field", "sourceValue", "canonicalValue", "ruleCode"],
+            "properties": {
+              "field": { "const": "NUTS" },
+              "sourceValue": { "type": "string", "minLength": 1 },
+              "canonicalValue": { "type": "string", "pattern": "^RO[0-9A-Z]{3}$" },
+              "ruleCode": { "const": "SIRUTA_REVIEWED_NUTS_CORRECTION" }
+            }
+          }
+        }
       }
     }
   }

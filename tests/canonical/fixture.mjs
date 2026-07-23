@@ -30,7 +30,8 @@ export const CONFIGURATION = {
     totalRows: 3,
     levels: { "1": 1, "2": 1, "3": 1 },
     checksumWarnings: 2,
-    nutsMissingValues: 2
+    nutsMissingValues: 2,
+    nuts3Codes: 1
   },
   reviewedSourceExceptions: {
     rootParentSentinel: {
@@ -38,7 +39,8 @@ export const CONFIGURATION = {
       sourceLevel: 1,
       expectedCount: 1
     },
-    recordTypeDefinitions: {}
+    recordTypeDefinitions: {},
+    nutsCountyCorrections: {}
   },
   xlsxLimits: {
     maxEntries: 32,

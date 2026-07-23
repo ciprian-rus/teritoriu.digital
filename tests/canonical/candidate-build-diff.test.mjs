@@ -122,6 +122,81 @@ test("applies the reviewed Bucharest type definition only to SIRUTA 179132", () 
   );
 });
 
+test("corrects the reviewed Giurgiu NUTS value and preserves the raw source value", () => {
+  const rows = cloneRows();
+  rows[1] = [
+    528,
+    "JUDEȚUL GIURGIU",
+    0,
+    52,
+    1,
+    40,
+    1,
+    0,
+    3,
+    19,
+    "1900000000000",
+    "RO224"
+  ];
+  rows[2][3] = 52;
+  rows[2][4] = 528;
+  rows[3][3] = 52;
+  const configuration = structuredClone(CONFIGURATION);
+  configuration.reviewedSourceExceptions.nutsCountyCorrections = {
+    "52": {
+      countySiruta: "528",
+      sourceValue: "RO224",
+      canonicalValue: "RO314",
+      expectedRecordCount: 1
+    }
+  };
+  const result = buildSirutaCandidateFromParsed(
+    parsedFixture(rows, configuration),
+    configuration,
+    {
+      sourceSnapshotId: SNAPSHOT_ID,
+      sourceSha256: SOURCE_SHA256,
+      uuidFactory: uuidSequence()
+    }
+  );
+
+  assert.equal(result.status, "passed");
+  const giurgiu = result.candidate.territories.find((territory) =>
+    territory.identifiers.some(
+      (identifier) =>
+        identifier.scheme === "ro.ins.siruta" && identifier.value === "528"
+    )
+  );
+  assert.equal(
+    giurgiu.identifiers.find((identifier) => identifier.scheme === "eu.eurostat.nuts")?.value,
+    "RO314"
+  );
+  assert.deepEqual(giurgiu.provenance.sourceCorrections, [{
+    field: "NUTS",
+    sourceValue: "RO224",
+    canonicalValue: "RO314",
+    ruleCode: "SIRUTA_REVIEWED_NUTS_CORRECTION"
+  }]);
+
+  const driftedRows = structuredClone(rows);
+  driftedRows[1][11] = "RO314";
+  const drifted = buildSirutaCandidateFromParsed(
+    parsedFixture(driftedRows, configuration),
+    configuration,
+    {
+      sourceSnapshotId: SNAPSHOT_ID,
+      sourceSha256: SOURCE_SHA256,
+      uuidFactory: uuidSequence()
+    }
+  );
+  assert.equal(drifted.status, "blocked");
+  assert.ok(
+    drifted.findings.some(
+      (item) => item.ruleCode === "SIRUTA_REVIEWED_NUTS_CORRECTION_MISMATCH"
+    )
+  );
+});
+
 test("ignores provenance-only changes but reports semantic field changes", () => {
   const first = build();
   const provenanceOnly = build({

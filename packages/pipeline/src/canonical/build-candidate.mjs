@@ -12,6 +12,7 @@ import {
 import { parseSirutaWorkbook } from "./siruta-parser.mjs";
 import { sirutaRecordTypeDefinition } from "./siruta-types.mjs";
 import {
+  resolvedSirutaNuts,
   resolvedSirutaParent,
   summarizeFindings,
   validateSirutaRecords
@@ -30,13 +31,28 @@ function buildTerritories(parsed, validation, identities, configuration, options
         : null;
       const countySiruta = validation.countyByCode.get(record.countyCode);
       const countyTerritoryId = countySiruta ? identities.territoryIds.get(countySiruta) ?? null : null;
+      const nutsResolution = resolvedSirutaNuts(record, configuration);
       const identifiers = [
         { scheme: "ro.ins.siruta", value: record.siruta, status: "active", validFrom: null, validTo: null }
       ];
-      if (definition.administrativeRole === "county_uat" && record.nuts) {
-        identifiers.push({ scheme: "eu.eurostat.nuts", value: record.nuts, status: "active", validFrom: null, validTo: null });
+      if (definition.administrativeRole === "county_uat" && nutsResolution.value) {
+        identifiers.push({
+          scheme: "eu.eurostat.nuts",
+          value: nutsResolution.value,
+          status: "active",
+          validFrom: null,
+          validTo: null
+        });
       }
       identifiers.sort((left, right) => left.scheme.localeCompare(right.scheme));
+      const provenance = {
+        sourceSnapshotId: options.sourceSnapshotId,
+        sourceRecordHash: sourceRecord.sourceRecordHash,
+        transformationVersion: options.transformationVersion
+      };
+      if (definition.administrativeRole === "county_uat" && nutsResolution.correction) {
+        provenance.sourceCorrections = [nutsResolution.correction];
+      }
 
       return {
         territoryId,
@@ -56,11 +72,7 @@ function buildTerritories(parsed, validation, identities, configuration, options
         validFrom: null,
         validTo: null,
         identifiers,
-        provenance: {
-          sourceSnapshotId: options.sourceSnapshotId,
-          sourceRecordHash: sourceRecord.sourceRecordHash,
-          transformationVersion: options.transformationVersion
-        }
+        provenance
       };
     })
     .sort((left, right) => Number(sirutaIdentifier(left)) - Number(sirutaIdentifier(right)));

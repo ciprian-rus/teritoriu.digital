@@ -89,6 +89,7 @@ function validateCandidate(candidate) {
 
   const ids = new Set();
   const sirutaCodes = new Set();
+  const identifierOwners = new Map();
   let previousSiruta = -1;
   for (const territory of candidate.territories) {
     if (!validators.territory(territory)) {
@@ -104,6 +105,13 @@ function validateCandidate(candidate) {
     previousSiruta = Number(siruta);
     if (territory.provenance.sourceSnapshotId !== candidate.sourceSnapshotId) {
       fail(`territory ${siruta} references a different source snapshot`);
+    }
+    for (const identifier of territory.identifiers) {
+      const key = `${identifier.scheme}\u0000${identifier.value}\u0000${identifier.validFrom ?? ""}`;
+      if (identifierOwners.has(key)) {
+        fail(`duplicate ${identifier.scheme} identifier ${identifier.value}`);
+      }
+      identifierOwners.set(key, territory.territoryId);
     }
   }
   for (const territory of candidate.territories) {

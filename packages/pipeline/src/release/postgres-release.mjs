@@ -312,7 +312,12 @@ function revisionRows(candidate, releaseId, uuidFactory) {
     source_record_hash: territory.provenance.sourceRecordHash,
     transformation_version: territory.provenance.transformationVersion,
     release_id: releaseId,
-    metadata: { releaseId }
+    metadata: {
+      releaseId,
+      ...(territory.provenance.sourceCorrections
+        ? { sourceCorrections: territory.provenance.sourceCorrections }
+        : {})
+    }
   }));
 }
 
@@ -360,6 +365,12 @@ export async function promoteSirutaRelease(input, options = {}) {
           return { created: false, releaseId: manifest.releaseId, status: "published" };
         }
         fail("RELEASE_ID_COLLISION", "The release ID already exists with different state or bytes");
+      }
+      if (options.requireExistingPromotion) {
+        fail(
+          "PUBLIC_RELEASE_WITHOUT_PROMOTION",
+          "A public GitHub release cannot initiate a missing database promotion"
+        );
       }
 
       const context = await loadApprovedSirutaContext(client, input.importRunId);

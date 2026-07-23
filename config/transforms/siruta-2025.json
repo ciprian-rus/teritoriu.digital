@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "transformationVersion": "siruta-2025.1.1.0",
+  "transformationVersion": "siruta-2025.1.2.0",
   "expectedHeaders": [
     "SIRUTA",
     "DENLOC",
@@ -23,7 +23,8 @@
       "3": 13755
     },
     "checksumWarnings": 77,
-    "nutsMissingValues": 215
+    "nutsMissingValues": 215,
+    "nuts3Codes": 42
   },
   "reviewedSourceExceptions": {
     "rootParentSentinel": {
@@ -40,6 +41,14 @@
         "isUat": true,
         "isLocality": true,
         "isCountySeat": true
+      }
+    },
+    "nutsCountyCorrections": {
+      "52": {
+        "countySiruta": "528",
+        "sourceValue": "RO224",
+        "canonicalValue": "RO314",
+        "expectedRecordCount": 225
       }
     }
   },

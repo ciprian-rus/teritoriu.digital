@@ -141,6 +141,33 @@ test("blocks duplicate identifiers, broken parents and unreviewed type codes", (
   assert.ok(nuts.findings.some((item) => item.ruleCode === "SIRUTA_NUTS_COUNTY_CONFLICT"));
 });
 
+test("blocks one canonical NUTS identifier assigned to two counties", () => {
+  const rows = [
+    HEADERS,
+    [1, "JUDEȚUL UNU", 0, 1, 1, 40, 1, 0, 1, 0, "0100000000000", "RO000"],
+    [4, "JUDEȚUL DOI", 0, 2, 1, 40, 1, 0, 1, 0, "0200000000000", "RO000"]
+  ];
+  const configuration = structuredClone(CONFIGURATION);
+  configuration.expectedProfile = {
+    totalRows: 2,
+    levels: { "1": 2, "2": 0, "3": 0 },
+    checksumWarnings: 1,
+    nutsMissingValues: 0,
+    nuts3Codes: 2
+  };
+  configuration.reviewedSourceExceptions.rootParentSentinel.expectedCount = 2;
+  const result = validateSirutaRecords(
+    parseSirutaRows(rows, configuration),
+    configuration
+  );
+  assert.equal(result.status, "blocked");
+  assert.ok(
+    result.findings.some(
+      (item) => item.ruleCode === "SIRUTA_NUTS_DUPLICATE_COUNTY_IDENTIFIER"
+    )
+  );
+});
+
 test("implements the published checksum algorithm without rewriting official codes", () => {
   assert.equal(sirutaChecksumIsValid("1"), true);
   assert.equal(sirutaChecksumIsValid("2"), false);

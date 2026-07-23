@@ -67,12 +67,15 @@ Modul `--stage` citește `SUPABASE_DB_URL` exclusiv din mediul server-side. El o
 | Nivel 3 | 13.755 |
 | Avertismente checksum oficial | 77 |
 | Valori NUTS lipsă | 215 |
+| Coduri NUTS3 canonice pe județe | 42 |
 
 Primele patru volume sunt porți blocante. Cele 77 de coduri care nu trec aplicarea literală a algoritmului publicat și cele 215 valori NUTS lipsă sunt avertismente de calitate ale sursei: valorile oficiale sunt păstrate, nu corectate implicit. Schimbarea numărului lor produce un avertisment distinct și trebuie examinată în review.
 
 Snapshotul oficial folosește valoarea-santinelă `SIRSUP = 1` pentru toate cele 42 de înregistrări de nivel 1. Valoarea brută rămâne în staging, dar relația canonică este `parentTerritoryId = null`; aceeași valoare continuă să fie interpretată ca părinte real la nivelurile inferioare. Configurația blochează importul dacă numărul santinelelor se schimbă.
 
 Înregistrarea `MUNICIPIUL BUCUREȘTI` cu SIRUTA `179132` este excepția oficială `TIP = 9`, nivel 2. Configurația versionată îi atribuie definiția canonică `municipality` / `local_uat`; excepția se aplică numai combinației exacte cod–tip–nivel, iar dispariția sau schimbarea ei blochează importul.
+
+Sursa atribuie eronat valoarea NUTS `RO224` atât județului Galați, cât și județului Giurgiu. Pentru județul Giurgiu (`JUD = 52`, SIRUTA `528`), transformarea versionată produce identificatorul canonic `RO314`. Valoarea brută `RO224` rămâne în staging și este consemnată în `provenance.sourceCorrections`; corecția se aplică numai celor 225 de rânduri cu combinația revizuită. Orice schimbare a codului-sursă, a ancorei județului sau a volumului blochează importul.
 
 ## Blocaje obligatorii
 
@@ -81,7 +84,7 @@ Snapshotul oficial folosește valoarea-santinelă `SIRSUP = 1` pentru toate cele
 - volum diferit de profilul aprobat;
 - cod SIRUTA duplicat;
 - părinte absent, nivel greșit, județ diferit sau ciclu;
-- format NUTS3 invalid sau două coduri NUTS3 diferite în același județ;
+- format NUTS3 invalid, două coduri NUTS3 diferite în același județ sau același identificator canonic atribuit mai multor județe;
 - mai multe identități active pentru același cod;
 - reutilizarea automată a unui cod istoric;
 - conflict între o identitate activă și o propunere;
