@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { acquireSource } from "../packages/pipeline/src/acquisition/acquire.mjs";
 import { safeErrorMessage } from "../packages/pipeline/src/acquisition/errors.mjs";
 import { loadManualSnapshot } from "../packages/pipeline/src/acquisition/manual-input.mjs";
+import { loadStorageBootstrap } from "../packages/pipeline/src/acquisition/storage-input.mjs";
 import { validateSirutaSnapshot } from "../packages/pipeline/src/canonical/build-candidate.mjs";
 
 const SOURCE_FILE = new URL("../config/sources/siruta-2025.json", import.meta.url);
@@ -15,8 +16,10 @@ function usage() {
   npm run acquire:siruta -- --publish [--expected-sha256 <sha>]
   npm run acquire:siruta -- --publish --direct-resource
   npm run acquire:siruta -- --manual-file <path> --expected-sha256 <sha> --expected-size <bytes> --provenance-url <url> --publish
+  npm run acquire:siruta -- --storage-object <path> --expected-sha256 <sha> --expected-size <bytes> --provenance-url <url> --publish
 
 --direct-resource downloads the allowlisted official resource URL without CKAN discovery.
+--storage-object loads a pre-positioned object from the private source-snapshots/bootstrap prefix.
 It is intended for the scheduled source mirror; all integrity and canonical validation gates remain active.
 
 Publish mode requires SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and SUPABASE_DB_URL.`;
@@ -33,6 +36,7 @@ function parseArguments(args) {
     else if (argument === "--expected-sha256") result.expectedSha256 = args[++index];
     else if (argument === "--expected-size") result.expectedSize = Number(args[++index]);
     else if (argument === "--manual-file") result.manualFile = args[++index];
+    else if (argument === "--storage-object") result.storageObject = args[++index];
     else if (argument === "--provenance-url") result.provenanceUrl = args[++index];
     else if (argument === "--fail-on-observed-change") result.failOnObservedChange = true;
     else if (argument === "--help" || argument === "-h") result.help = true;
@@ -46,19 +50,24 @@ function parseArguments(args) {
   if (result.expectedSha256 && !/^[0-9a-f]{64}$/.test(result.expectedSha256)) {
     throw new Error("--expected-sha256 must contain 64 lowercase hexadecimal characters");
   }
-  if (result.directResource && result.manualFile) {
-    throw new Error("--direct-resource cannot be combined with --manual-file");
+  const suppliedChannels = [result.directResource, Boolean(result.manualFile), Boolean(result.storageObject)].filter(Boolean);
+  if (suppliedChannels.length > 1) {
+    throw new Error("--direct-resource, --manual-file and --storage-object are mutually exclusive");
   }
   if (result.directResource && !result.publish && !result.dryRun) {
     throw new Error("--direct-resource requires --publish or --dry-run");
   }
-  if (result.manualFile) {
-    if (!result.publish) throw new Error("--manual-file requires --publish");
-    if (!result.expectedSha256) throw new Error("--manual-file requires --expected-sha256");
+  for (const channel of [
+    { enabled: Boolean(result.manualFile), flag: "--manual-file" },
+    { enabled: Boolean(result.storageObject), flag: "--storage-object" }
+  ]) {
+    if (!channel.enabled) continue;
+    if (!result.publish) throw new Error(`${channel.flag} requires --publish`);
+    if (!result.expectedSha256) throw new Error(`${channel.flag} requires --expected-sha256`);
     if (!Number.isSafeInteger(result.expectedSize) || result.expectedSize < 1) {
-      throw new Error("--manual-file requires a positive integer --expected-size");
+      throw new Error(`${channel.flag} requires a positive integer --expected-size`);
     }
-    if (!result.provenanceUrl) throw new Error("--manual-file requires --provenance-url");
+    if (!result.provenanceUrl) throw new Error(`${channel.flag} requires --provenance-url`);
   }
   return result;
 }
@@ -120,17 +129,28 @@ try {
     skipDiscovery: args.directResource,
     snapshotValidator: (bytes) => validateSirutaSnapshot(bytes, transformation)
   };
-  if (args.manualFile) {
-    options.providedDownload = await loadManualSnapshot(args.manualFile, source, {
-      sha256: args.expectedSha256,
-      sizeBytes: args.expectedSize,
-      provenanceUrl: args.provenanceUrl
-    });
-  }
   if (args.publish) {
     options.supabaseUrl = requireEnvironment("SUPABASE_URL");
     options.serviceRoleKey = requireEnvironment("SUPABASE_SERVICE_ROLE_KEY");
     options.databaseUrl = requireEnvironment("SUPABASE_DB_URL");
+  }
+  const expectedInput = {
+    sha256: args.expectedSha256,
+    sizeBytes: args.expectedSize,
+    provenanceUrl: args.provenanceUrl
+  };
+  if (args.manualFile) {
+    options.providedDownload = await loadManualSnapshot(args.manualFile, source, expectedInput);
+  } else if (args.storageObject) {
+    options.providedDownload = await loadStorageBootstrap(
+      args.storageObject,
+      source,
+      expectedInput,
+      {
+        supabaseUrl: options.supabaseUrl,
+        serviceRoleKey: options.serviceRoleKey
+      }
+    );
   }
 
   const result = await acquireSource(source, options);
@@ -147,9 +167,11 @@ try {
         mode: result.mode,
         acquisitionChannel: args.manualFile
           ? "manual-bootstrap"
-          : args.directResource
-            ? "official-direct-mirror"
-            : "ckan-discovery",
+          : args.storageObject
+            ? "private-storage-bootstrap"
+            : args.directResource
+              ? "official-direct-mirror"
+              : "ckan-discovery",
         source: source.slug,
         snapshotId: result.metadata.snapshotId,
         sha256: result.download.sha256,

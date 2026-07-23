@@ -45,3 +45,24 @@ release remains unchanged.
 
 After a detected change, an operator must run canonicalization, inspect the diff and findings,
 approve the candidate explicitly, and only then prepare/promote a new immutable public release.
+
+## One-time bootstrap from private storage
+
+When the official host cannot deliver bytes reliably to GitHub Actions, an operator may
+pre-position the reviewed official XLSX at `source-snapshots/bootstrap/siruta-2025.xlsx`.
+Start the workflow manually and provide all four inputs:
+
+- `storage_object_path`: an XLSX object below the dedicated `bootstrap/` prefix;
+- `expected_sha256`: the exact lowercase SHA-256 computed before upload;
+- `expected_size`: the exact positive byte size;
+- `provenance_url`: the allowlisted HTTPS URL identifying the official source.
+
+The service-role download is private and fail-closed. Before any archive or database write,
+the pipeline verifies the path boundary, provenance allowlist, configured maximum size, exact
+size, exact SHA-256, detected XLSX type, and the complete canonical SIRUTA profile. Successful
+bytes are copied to the normal immutable content-addressed path and registered through the same
+transactional acquisition path. The temporary bootstrap object is never treated as a release and
+does not bypass canonicalization, diff review, approval, or stable-channel promotion.
+
+Scheduled runs continue to inspect the official source directly. Leaving
+`storage_object_path` empty preserves the normal official mirror behavior.
