@@ -22,6 +22,7 @@ function source(resourceUrl, overrides = {}) {
     ],
     maxBytes: 1024,
     timeoutMs: 200,
+    deadlineMs: 1000,
     maxAttempts: 3,
     maxRedirects: 2,
     ...overrides
@@ -122,12 +123,40 @@ test("fails closed before reading a declared oversized body", async (context) =>
   );
 });
 
-test("aborts and retries a request that exceeds its timeout", async (context) => {
+test("allows an active transfer to exceed the socket inactivity timeout", async () => {
+  const result = await downloadSnapshot(
+    source("https://data.gov.ro/active", {
+      timeoutMs: 20,
+      deadlineMs: 200,
+      maxAttempts: 1
+    }),
+    {
+      resolver: async () => [{ address: "93.184.216.34", family: 4 }],
+      transport: async (_url, options) => {
+        await new Promise((resolve) => setTimeout(resolve, 60));
+        assert.equal(options.timeoutMs, 20);
+        assert.equal(options.signal.aborted, false);
+        return {
+          status: 200,
+          headers: { "content-type": "text/csv" },
+          body: XLSX
+        };
+      }
+    }
+  );
+  assert.equal(result.sizeBytes, XLSX.length);
+});
+
+test("aborts and retries a request that exceeds its total deadline", async (context) => {
   const fixture = await serverFixture();
   context.after(fixture.close);
   await assert.rejects(
     downloadSnapshot(
-      source("https://data.gov.ro/slow", { timeoutMs: 20, maxAttempts: 2 }),
+      source("https://data.gov.ro/slow", {
+        timeoutMs: 20,
+        deadlineMs: 20,
+        maxAttempts: 2
+      }),
       {
         resolver: fixture.resolver,
         transport: fixture.transport,
@@ -138,6 +167,7 @@ test("aborts and retries a request that exceeds its timeout", async (context) =>
       assert.equal(error.code, "TIMEOUT");
       assert.equal(error.context.attempts, 2);
       assert.equal(error.context.maxAttempts, 2);
+      assert.equal(error.context.timeoutSource, "request-deadline");
       return true;
     }
   );

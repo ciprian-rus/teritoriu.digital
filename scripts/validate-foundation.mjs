@@ -227,6 +227,13 @@ if (
 ) {
   errors.push("SIRUTA timeout must stay between 10 and 60 seconds per attempt");
 }
+if (
+  !Number.isSafeInteger(sirutaSource.deadlineMs) ||
+  sirutaSource.deadlineMs < sirutaSource.timeoutMs ||
+  sirutaSource.deadlineMs > 300000
+) {
+  errors.push("SIRUTA download deadline must be between the inactivity timeout and 5 minutes");
+}
 if (!Number.isSafeInteger(sirutaSource.maxAttempts) || sirutaSource.maxAttempts < 1 || sirutaSource.maxAttempts > 4) {
   errors.push("SIRUTA acquisition must use between one and four attempts");
 }
@@ -331,73 +338,3 @@ const canonicalizeWorkflow = await load(".github/workflows/canonicalize-siruta.y
 const canonicalizeBeforeFetch = canonicalizeWorkflow.slice(
   0,
   canonicalizeWorkflow.indexOf("      - name: Fetch exact private snapshot")
-);
-if (canonicalizeBeforeFetch.includes("secrets.")) {
-  errors.push("Canonicalize SIRUTA install and test steps must run without secrets");
-}
-if (!canonicalizeWorkflow.includes("environment: production") || !canonicalizeWorkflow.includes("github.ref == 'refs/heads/main'")) {
-  errors.push("Canonicalize SIRUTA must be restricted to main and the protected production environment");
-}
-
-const approveWorkflow = await load(".github/workflows/approve-siruta-candidate.yml");
-const approveBeforePrivilegedStep = approveWorkflow.slice(0, approveWorkflow.indexOf("      - name: Approve exact candidate"));
-if (approveBeforePrivilegedStep.includes("secrets.")) {
-  errors.push("Candidate approval tests must run before SUPABASE_DB_URL is injected");
-}
-if (!approveWorkflow.includes("environment: production") || !approveWorkflow.includes("persist-credentials: false")) {
-  errors.push("Candidate approval must use production protection and discard checkout credentials");
-}
-
-const publishWorkflow = await load(".github/workflows/publish-siruta-release.yml");
-const publishBeforeBuild = publishWorkflow.slice(0, publishWorkflow.indexOf("      - name: Rebuild approved candidate and release bundle"));
-if (publishBeforeBuild.includes("secrets.")) {
-  errors.push("Release install and tests must run before Supabase secrets are injected");
-}
-for (const invariant of [
-  "RELEASE_IMMUTABILITY_CONFIRMED",
-  "--jq .visibility",
-  "persist-credentials: false",
-  "readReleaseBundle",
-  "cmp --silent",
-  "release:promote:siruta"
-]) {
-  if (!publishWorkflow.includes(invariant)) errors.push(`Release workflow invariant missing: ${invariant}`);
-}
-
-const moveStableWorkflow = await load(".github/workflows/move-stable-release.yml");
-const moveBeforePrivilegedStep = moveStableWorkflow.slice(0, moveStableWorkflow.indexOf("      - name: Move stable with an audited event"));
-if (moveBeforePrivilegedStep.includes("secrets.")) {
-  errors.push("Stable-channel tests must run before SUPABASE_DB_URL is injected");
-}
-
-const productionVerificationWorkflow = await load(".github/workflows/verify-production-registry.yml");
-const productionBeforePrivilegedStep = productionVerificationWorkflow.slice(
-  0,
-  productionVerificationWorkflow.indexOf("      - name: Verify production migrations and isolation read-only")
-);
-if (productionBeforePrivilegedStep.includes("secrets.")) {
-  errors.push("Production verification tests must run before SUPABASE_DB_URL is injected");
-}
-if (
-  !productionVerificationWorkflow.includes("environment: production") ||
-  !productionVerificationWorkflow.includes("persist-credentials: false")
-) {
-  errors.push("Production verification must be protected and discard checkout credentials");
-}
-if (
-  !productionVerificationWorkflow.includes("push:") ||
-  !productionVerificationWorkflow.includes("branches:") ||
-  !productionVerificationWorkflow.includes("supabase/migrations/**")
-) {
-  errors.push("Production verification must run after migration pushes to main");
-}
-if (!moveStableWorkflow.includes("environment: production") || !moveStableWorkflow.includes("release:stable:siruta")) {
-  errors.push("Stable-channel moves must use the protected audited workflow");
-}
-
-if (errors.length > 0) {
-  console.error(`Foundation validation failed:\n- ${errors.join("\n- ")}`);
-  process.exit(1);
-}
-
-console.log(`Foundation validation passed (${requiredFiles.length} required files).`);

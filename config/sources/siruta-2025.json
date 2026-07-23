@@ -21,6 +21,7 @@
   ],
   "maxBytes": 5242880,
   "timeoutMs": 60000,
+  "deadlineMs": 300000,
   "maxAttempts": 4,
   "maxRedirects": 5,
   "observedSnapshot": {
