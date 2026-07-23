@@ -26,7 +26,7 @@ async function requestFollowingRedirects(urlInput, source, dependencies) {
   for (let redirectCount = 0; redirectCount <= source.maxRedirects; redirectCount += 1) {
     const safeTarget = await assertSafeTarget(currentUrl, source, dependencies.resolver);
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), source.timeoutMs);
+    const deadline = setTimeout(() => controller.abort(), source.deadlineMs);
     let response;
     try {
       response = await dependencies.transport(safeTarget.url, {
@@ -40,7 +40,7 @@ async function requestFollowingRedirects(urlInput, source, dependencies) {
         }
       });
     } finally {
-      clearTimeout(timeout);
+      clearTimeout(deadline);
     }
 
     if (!REDIRECT_STATUSES.has(response.status)) {
@@ -74,7 +74,7 @@ function validateSourceConfiguration(source) {
       throw new AcquisitionError("SOURCE_CONFIG_INVALID", `${key} must be a non-empty array`);
     }
   }
-  for (const key of ["maxBytes", "timeoutMs", "maxAttempts", "maxRedirects"]) {
+  for (const key of ["maxBytes", "timeoutMs", "deadlineMs", "maxAttempts", "maxRedirects"]) {
     if (!Number.isInteger(source[key]) || source[key] < 1) {
       throw new AcquisitionError("SOURCE_CONFIG_INVALID", `${key} must be a positive integer`);
     }
@@ -82,7 +82,13 @@ function validateSourceConfiguration(source) {
 }
 
 export async function downloadSnapshot(source, options = {}) {
-  validateSourceConfiguration(source);
+  const normalizedSource = {
+    ...source,
+    // Preserve the original strict behavior for callers and fixtures that have
+    // not opted into a longer total download window.
+    deadlineMs: source.deadlineMs ?? source.timeoutMs
+  };
+  validateSourceConfiguration(normalizedSource);
   const dependencies = {
     resolver: options.resolver,
     sleep: options.sleep ?? defaultSleep,
@@ -90,9 +96,13 @@ export async function downloadSnapshot(source, options = {}) {
   };
 
   let lastError;
-  for (let attempt = 1; attempt <= source.maxAttempts; attempt += 1) {
+  for (let attempt = 1; attempt <= normalizedSource.maxAttempts; attempt += 1) {
     try {
-      const response = await requestFollowingRedirects(source.resourceUrl, source, dependencies);
+      const response = await requestFollowingRedirects(
+        normalizedSource.resourceUrl,
+        normalizedSource,
+        dependencies
+      );
       if (response.status < 200 || response.status >= 300) {
         const retryable = RETRYABLE_STATUSES.has(response.status) || response.status >= 500;
         throw new AcquisitionError("HTTP_STATUS", `Source returned HTTP ${response.status}`, {
@@ -121,7 +131,7 @@ export async function downloadSnapshot(source, options = {}) {
 
       return {
         bytes: response.body,
-        requestedUrl: source.resourceUrl,
+        requestedUrl: normalizedSource.resourceUrl,
         resolvedUrl: response.resolvedUrl,
         httpStatus: response.status,
         headers: response.headers,
@@ -136,9 +146,10 @@ export async function downloadSnapshot(source, options = {}) {
         error instanceof AcquisitionError
           ? error
           : error?.name === "AbortError"
-            ? new AcquisitionError("TIMEOUT", `Request exceeded ${source.timeoutMs} ms`, {
+            ? new AcquisitionError("TIMEOUT", `Request exceeded ${normalizedSource.deadlineMs} ms`, {
                 cause: error,
-                retryable: true
+                retryable: true,
+                context: { timeoutSource: "request-deadline" }
               })
           : new AcquisitionError("NETWORK_FAILED", "Network request failed", {
               cause: error,
@@ -147,10 +158,10 @@ export async function downloadSnapshot(source, options = {}) {
       normalized.context = {
         ...normalized.context,
         attempts: attempt,
-        maxAttempts: source.maxAttempts
+        maxAttempts: normalizedSource.maxAttempts
       };
       lastError = normalized;
-      if (!normalized.retryable || attempt === source.maxAttempts) {
+      if (!normalized.retryable || attempt === normalizedSource.maxAttempts) {
         throw normalized;
       }
       await dependencies.sleep(retryDelay(attempt, normalized.context.headers));

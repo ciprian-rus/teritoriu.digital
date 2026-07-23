@@ -227,6 +227,13 @@ if (
 ) {
   errors.push("SIRUTA timeout must stay between 10 and 60 seconds per attempt");
 }
+if (
+  !Number.isSafeInteger(sirutaSource.deadlineMs) ||
+  sirutaSource.deadlineMs < sirutaSource.timeoutMs ||
+  sirutaSource.deadlineMs > 300000
+) {
+  errors.push("SIRUTA download deadline must be between the inactivity timeout and 5 minutes");
+}
 if (!Number.isSafeInteger(sirutaSource.maxAttempts) || sirutaSource.maxAttempts < 1 || sirutaSource.maxAttempts > 4) {
   errors.push("SIRUTA acquisition must use between one and four attempts");
 }
