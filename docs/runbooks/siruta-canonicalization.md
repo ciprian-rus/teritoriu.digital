@@ -70,6 +70,10 @@ Modul `--stage` citește `SUPABASE_DB_URL` exclusiv din mediul server-side. El o
 
 Primele patru volume sunt porți blocante. Cele 77 de coduri care nu trec aplicarea literală a algoritmului publicat și cele 215 valori NUTS lipsă sunt avertismente de calitate ale sursei: valorile oficiale sunt păstrate, nu corectate implicit. Schimbarea numărului lor produce un avertisment distinct și trebuie examinată în review.
 
+Snapshotul oficial folosește valoarea-santinelă `SIRSUP = 1` pentru toate cele 42 de înregistrări de nivel 1. Valoarea brută rămâne în staging, dar relația canonică este `parentTerritoryId = null`; aceeași valoare continuă să fie interpretată ca părinte real la nivelurile inferioare. Configurația blochează importul dacă numărul santinelelor se schimbă.
+
+Înregistrarea `MUNICIPIUL BUCUREȘTI` cu SIRUTA `179132` este excepția oficială `TIP = 9`, nivel 2. Configurația versionată îi atribuie definiția canonică `municipality` / `local_uat`; excepția se aplică numai combinației exacte cod–tip–nivel, iar dispariția sau schimbarea ei blochează importul.
+
 ## Blocaje obligatorii
 
 - antet sau tip SIRUTA necunoscut;

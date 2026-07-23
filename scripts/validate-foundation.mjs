@@ -277,6 +277,30 @@ if (Object.values(profile.levels ?? {}).reduce((sum, value) => sum + value, 0) !
 if (profile.checksumWarnings !== 77 || profile.nutsMissingValues !== 215) {
   errors.push("SIRUTA reviewed source-quality warning counts changed without a config review");
 }
+const reviewedSourceExceptions = {
+  rootParentSentinel: {
+    value: "1",
+    sourceLevel: 1,
+    expectedCount: 42
+  },
+  recordTypeDefinitions: {
+    "179132": {
+      sourceTypeCode: 9,
+      sourceLevel: 2,
+      territoryType: "municipality",
+      administrativeRole: "local_uat",
+      isUat: true,
+      isLocality: true,
+      isCountySeat: true
+    }
+  }
+};
+if (
+  JSON.stringify(sirutaTransform.reviewedSourceExceptions) !==
+  JSON.stringify(reviewedSourceExceptions)
+) {
+  errors.push("SIRUTA reviewed hierarchy exceptions differ from the approved 2025 source contract");
+}
 if (!/^siruta-2025\.[0-9]+\.[0-9]+\.[0-9]+$/.test(sirutaTransform.transformationVersion ?? "")) {
   errors.push("SIRUTA transformationVersion must be explicitly versioned");
 }

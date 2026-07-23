@@ -25,6 +25,27 @@ export function sirutaTypeDefinition(typeCode, officialName = "") {
   return { ...definition };
 }
 
+export function sirutaRecordTypeDefinition(record, configuration = {}) {
+  const definition = sirutaTypeDefinition(record.typeCode, record.officialName);
+  const override =
+    configuration.reviewedSourceExceptions?.recordTypeDefinitions?.[record.siruta];
+  if (
+    !override ||
+    override.sourceTypeCode !== record.typeCode ||
+    override.sourceLevel !== record.level
+  ) {
+    return definition;
+  }
+  return {
+    territoryType: override.territoryType,
+    administrativeRole: override.administrativeRole,
+    expectedLevel: override.sourceLevel,
+    isUat: override.isUat,
+    isLocality: override.isLocality,
+    isCountySeat: override.isCountySeat
+  };
+}
+
 export function knownSirutaTypeCodes() {
   return [...TYPE_DEFINITIONS.keys()].sort((left, right) => left - right);
 }

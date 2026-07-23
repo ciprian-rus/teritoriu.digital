@@ -27,6 +27,7 @@ test("parses the reviewed columns, normalizes Romanian text and preserves physic
   assert.equal(parsed.records[0].sourceRecordKey, "row:3");
   assert.equal(parsed.records[0].parsedRecord.officialName, "JUDEȚUL TEST");
   assert.equal(parsed.records[0].parsedRecord.siruta, "1");
+  assert.equal(parsed.records[0].parsedRecord.parentSiruta, "1");
   assert.equal(parsed.records[0].parsedRecord.fsl, "0100000000000");
   assert.match(parsed.records[0].sourceRecordHash, /^[0-9a-f]{64}$/);
 });
@@ -100,6 +101,9 @@ test("validates the hierarchy and reports the reviewed source-quality warnings",
   assert.equal(result.status, "passed");
   assert.deepEqual(result.profile.levels, { "1": 1, "2": 1, "3": 1 });
   assert.equal(result.profile.uniqueSirutaCodes, 3);
+  assert.equal(result.profile.rootParentSentinels, 1);
+  assert.equal(result.findings.some((item) => item.ruleCode === "SIRUTA_PARENT_MISSING"), false);
+  assert.equal(result.findings.some((item) => item.ruleCode === "SIRUTA_ROOT_PARENT_INVALID"), false);
   assert.ok(result.findings.some((item) => item.ruleCode === "SIRUTA_CHECKSUM_OFFICIAL_WARNING"));
   assert.ok(result.findings.some((item) => item.ruleCode === "SIRUTA_NUTS_MISSING_VALUES"));
 });
@@ -115,6 +119,11 @@ test("blocks duplicate identifiers, broken parents and unreviewed type codes", (
   parentRows[3][4] = 1;
   const parent = validateSirutaRecords(parseSirutaRows(parentRows, CONFIGURATION), CONFIGURATION);
   assert.ok(parent.findings.some((item) => item.ruleCode === "SIRUTA_PARENT_LEVEL_INVALID"));
+
+  const rootRows = cloneRows();
+  rootRows[1][4] = 2;
+  const root = validateSirutaRecords(parseSirutaRows(rootRows, CONFIGURATION), CONFIGURATION);
+  assert.ok(root.findings.some((item) => item.ruleCode === "SIRUTA_ROOT_PARENT_INVALID"));
 
   const orphanRows = cloneRows();
   orphanRows[2][4] = 0;
