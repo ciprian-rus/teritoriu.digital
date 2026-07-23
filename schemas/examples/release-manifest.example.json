@@ -1,6 +1,18 @@
 {
   "releaseId": "2026.07.22.1",
   "releaseTag": "siruta-2026.07.22.1",
+  "contract": {
+    "name": "teritoriu.digital/siruta-release",
+    "version": "1.0.0",
+    "descriptorArtifact": "contract.json",
+    "compatibility": "semver-major",
+    "schemas": {
+      "contract": "contract.schema.json",
+      "manifest": "release-manifest.schema.json",
+      "territories": "territories.schema.json",
+      "territory": "territory.schema.json"
+    }
+  },
   "schemaVersion": "1.0.0",
   "transformationVersion": "siruta-2025.1.0.0",
   "publishedAt": "2026-07-22T16:00:00.000Z",
@@ -55,6 +67,27 @@
       "uri": "https://github.com/ciprian-rus/teritoriu.digital/releases/download/siruta-2026.07.22.1/changelog.json"
     },
     {
+      "name": "contract.json",
+      "mediaType": "application/json",
+      "sizeBytes": 1,
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "uri": "https://github.com/ciprian-rus/teritoriu.digital/releases/download/siruta-2026.07.22.1/contract.json"
+    },
+    {
+      "name": "contract.schema.json",
+      "mediaType": "application/schema+json",
+      "sizeBytes": 1,
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "uri": "https://github.com/ciprian-rus/teritoriu.digital/releases/download/siruta-2026.07.22.1/contract.schema.json"
+    },
+    {
+      "name": "release-manifest.schema.json",
+      "mediaType": "application/schema+json",
+      "sizeBytes": 1,
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "uri": "https://github.com/ciprian-rus/teritoriu.digital/releases/download/siruta-2026.07.22.1/release-manifest.schema.json"
+    },
+    {
       "name": "territories.csv",
       "mediaType": "text/csv; charset=utf-8",
       "sizeBytes": 1,
@@ -67,6 +100,34 @@
       "sizeBytes": 1,
       "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
       "uri": "https://github.com/ciprian-rus/teritoriu.digital/releases/download/siruta-2026.07.22.1/territories.json"
+    },
+    {
+      "name": "territories.ndjson",
+      "mediaType": "application/x-ndjson",
+      "sizeBytes": 1,
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "uri": "https://github.com/ciprian-rus/teritoriu.digital/releases/download/siruta-2026.07.22.1/territories.ndjson"
+    },
+    {
+      "name": "territories.schema.json",
+      "mediaType": "application/schema+json",
+      "sizeBytes": 1,
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "uri": "https://github.com/ciprian-rus/teritoriu.digital/releases/download/siruta-2026.07.22.1/territories.schema.json"
+    },
+    {
+      "name": "territory-identifiers.csv",
+      "mediaType": "text/csv; charset=utf-8",
+      "sizeBytes": 1,
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "uri": "https://github.com/ciprian-rus/teritoriu.digital/releases/download/siruta-2026.07.22.1/territory-identifiers.csv"
+    },
+    {
+      "name": "territory.schema.json",
+      "mediaType": "application/schema+json",
+      "sizeBytes": 1,
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "uri": "https://github.com/ciprian-rus/teritoriu.digital/releases/download/siruta-2026.07.22.1/territory.schema.json"
     },
     {
       "name": "validation-report.json",

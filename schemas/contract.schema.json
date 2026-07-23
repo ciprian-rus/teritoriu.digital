@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://teritoriu.digital/schemas/public-contract/1.0.0",
+  "title": "Contract public Teritoriu.digital",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "name",
+    "contractVersion",
+    "schemaVersion",
+    "compatibility",
+    "artifacts",
+    "consumerReport"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "https://teritoriu.digital/schemas/public-contract/1.0.0"
+    },
+    "name": {
+      "type": "string",
+      "const": "teritoriu.digital/siruta-release"
+    },
+    "contractVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "schemaVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model",
+        "supportedMajor",
+        "minorChanges",
+        "patchChanges",
+        "unknownFields",
+        "breakingChanges"
+      ],
+      "properties": {
+        "model": { "const": "semantic-versioning" },
+        "supportedMajor": { "type": "integer", "const": 1 },
+        "minorChanges": { "const": "additive-only" },
+        "patchChanges": { "const": "non-semantic-fixes-only" },
+        "unknownFields": { "const": "validate-against-bundled-schema" },
+        "breakingChanges": { "const": "new-major-required" }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "purpose", "mediaType", "required", "schema"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._-]+$"
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "checksums",
+              "contract",
+              "contract-schema",
+              "release-manifest",
+              "release-manifest-schema",
+              "territory-payload",
+              "territory-payload-schema",
+              "territory-schema",
+              "streaming-territories",
+              "tabular-territories",
+              "identifier-mapping",
+              "validation-report",
+              "release-diff"
+            ]
+          },
+          "mediaType": { "type": "string", "minLength": 1 },
+          "required": { "type": "boolean", "const": true },
+          "schema": {
+            "oneOf": [
+              { "type": "null" },
+              { "type": "string", "pattern": "^[A-Za-z0-9._-]+$" }
+            ]
+          }
+        }
+      }
+    },
+    "consumerReport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "statusValues",
+        "acceptedField",
+        "rejectedField",
+        "conflictsField",
+        "activeReleaseField",
+        "activeManifestSha256Field"
+      ],
+      "properties": {
+        "statusValues": {
+          "type": "array",
+          "const": ["accepted", "rejected"]
+        },
+        "acceptedField": { "const": "accepted" },
+        "rejectedField": { "const": "rejected" },
+        "conflictsField": { "const": "conflicts" },
+        "activeReleaseField": { "const": "releaseId" },
+        "activeManifestSha256Field": { "const": "manifestSha256" }
+      }
+    }
+  }
+}

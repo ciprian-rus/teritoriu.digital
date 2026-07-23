@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://teritoriu.digital/schemas/territories/1.0.0",
+  "title": "Payload teritorii Teritoriu.digital",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "releaseId",
+    "contractVersion",
+    "schemaVersion",
+    "transformationVersion",
+    "sourceSnapshotId",
+    "sourceSha256",
+    "candidateSha256",
+    "territories"
+  ],
+  "properties": {
+    "releaseId": {
+      "type": "string",
+      "pattern": "^[0-9]{4}\\.[0-9]{2}\\.[0-9]{2}\\.[1-9][0-9]*$"
+    },
+    "contractVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "schemaVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "transformationVersion": { "type": "string", "minLength": 1 },
+    "sourceSnapshotId": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "sourceSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "candidateSha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "territories": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "https://teritoriu.digital/schemas/territory/1.0.0"
+      }
+    }
+  }
+}

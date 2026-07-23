@@ -6,9 +6,16 @@ import { verifyReleaseBundle } from "./artifact-builder.mjs";
 export const RELEASE_BUNDLE_FILES = Object.freeze([
   "SHA256SUMS",
   "changelog.json",
+  "contract.json",
+  "contract.schema.json",
   "manifest.json",
+  "release-manifest.schema.json",
   "territories.csv",
   "territories.json",
+  "territories.ndjson",
+  "territories.schema.json",
+  "territory-identifiers.csv",
+  "territory.schema.json",
   "validation-report.json"
 ]);
 

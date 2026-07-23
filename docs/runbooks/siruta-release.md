@@ -39,18 +39,28 @@ Intrări:
 - `published_at` UTC exact, cu milisecunde;
 - motivarea promovării.
 
-Pipeline-ul descarcă din nou snapshotul privat, verifică dimensiunea și SHA-256, reconstruiește candidatul cu același registru de identitate și cere același `candidateSha256`. Rezultatul conține exact:
+Pipeline-ul descarcă din nou snapshotul privat, verifică dimensiunea și SHA-256, reconstruiește candidatul cu același registru de identitate și cere același `candidateSha256`. Release-urile care implementează contractul public v1 conțin exact:
 
-- `territories.json`;
+- `contract.json` și `contract.schema.json`;
+- `manifest.json` și `release-manifest.schema.json`;
+- `territories.json` și `territories.schema.json`;
+- `territory.schema.json`;
+- `territories.ndjson`;
 - `territories.csv` UTF-8;
+- `territory-identifiers.csv`;
 - `validation-report.json`;
 - `changelog.json`;
-- `manifest.json` conform JSON Schema;
 - `SHA256SUMS`.
 
-`SHA256SUMS` include toate fișierele, mai puțin propriul hash, pentru a evita o referință circulară. Manifestul include hashurile celor patru artefacte de date; hashul manifestului este păstrat separat în planul de control.
+`SHA256SUMS` include toate fișierele, mai puțin propriul hash, pentru a evita o referință circulară. Manifestul include hashurile tuturor activelor non-circulare; hashul manifestului este păstrat separat în planul de control.
 
 Aceleași intrări produc aceiași octeți. Fișierele sunt create cu `create-only`; o reluare acceptă numai conținut identic.
+
+### Release contractual ulterior
+
+După existența canalului `stable`, acest workflow acceptă numai un candidat nou aprobat al cărui `candidateSha256` este identic byte-for-byte cu release-ul stabil. Rularea trebuie recanonicalizată și aprobată separat pe commitul nou; importul deja finalizat nu este reutilizat. Manifestul fixează automat release-ul stabil în `previousReleaseId`, iar changelogul trebuie să aibă zero adăugări, eliminări și modificări.
+
+Această poartă permite publicarea schemelor sau a activelor contractuale fără schimbarea celor 16.978 de identități. Orice schimbare a candidatului rămâne blocată până la fluxul de release istoric și review-ul de date corespunzător.
 
 ## 3. Publicarea și promovarea
 
