@@ -27,7 +27,27 @@ test("parses the reviewed columns, normalizes Romanian text and preserves physic
   assert.equal(parsed.records[0].sourceRecordKey, "row:3");
   assert.equal(parsed.records[0].parsedRecord.officialName, "JUDEȚUL TEST");
   assert.equal(parsed.records[0].parsedRecord.siruta, "1");
+  assert.equal(parsed.records[0].parsedRecord.fsl, "0100000000000");
   assert.match(parsed.records[0].sourceRecordHash, /^[0-9a-f]{64}$/);
+});
+
+test("preserves FSL as a 13-digit textual classification code and rejects lossy values", () => {
+  const parsed = parseSirutaRows(cloneRows(), CONFIGURATION);
+  assert.equal(parsed.records[0].parsedRecord.fsl, "0100000000000");
+
+  const shortCodeRows = cloneRows();
+  shortCodeRows[1][10] = "100";
+  const shortCode = parseSirutaRows(shortCodeRows, CONFIGURATION);
+  assert.equal(shortCode.records[0].parseStatus, "invalid");
+  assert.equal(
+    shortCode.findings.find((item) => item.ruleCode === "SIRUTA_RECORD_INVALID")?.message,
+    "FSL must be a 13-digit classification code"
+  );
+
+  const numericRows = cloneRows();
+  numericRows[1][10] = 100000000000;
+  const numeric = parseSirutaRows(numericRows, CONFIGURATION);
+  assert.equal(numeric.records[0].parseStatus, "invalid");
 });
 
 test("fails closed when the workbook header changes", () => {
@@ -71,6 +91,7 @@ test("decodes a real XLSX worksheet with the reviewed 12-column contract", async
   assert.equal(parsed.headers.length, 12);
   assert.equal(parsed.records.length, CONFIGURATION.expectedProfile.totalRows);
   assert.equal(parsed.records[0].parsedRecord.officialName, "JUDEȚUL TEST");
+  assert.equal(parsed.records[0].parsedRecord.fsl, "0100000000000");
   assert.equal(parsed.records[2].parsedRecord.level, 3);
 });
 
