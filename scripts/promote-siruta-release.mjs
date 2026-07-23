@@ -10,6 +10,7 @@ function parseArguments(args) {
     else if (argument === "--bundle-dir") result.bundleDirectory = args[++index];
     else if (argument === "--actor") result.actor = args[++index];
     else if (argument === "--rationale") result.rationale = args[++index];
+    else if (argument === "--require-existing-promotion") result.requireExistingPromotion = true;
     else if (argument === "--help" || argument === "-h") result.help = true;
     else throw new Error(`Unknown argument: ${argument}`);
   }
@@ -22,7 +23,7 @@ function parseArguments(args) {
 try {
   const args = parseArguments(process.argv.slice(2));
   if (args.help) {
-    console.log("Promote a verified, already-published SIRUTA release bundle. Requires SUPABASE_DB_URL.");
+    console.log("Promote a verified SIRUTA release bundle before publishing its GitHub Release. Requires SUPABASE_DB_URL.");
     process.exit(0);
   }
   if (!process.env.SUPABASE_DB_URL) throw new Error("Missing required environment variable: SUPABASE_DB_URL");
@@ -46,7 +47,10 @@ try {
     manifest: bundle.manifest,
     manifestSha256: bundle.manifestSha256,
     bundleArtifacts: bundle.artifacts
-  }, { connectionString: process.env.SUPABASE_DB_URL });
+  }, {
+    connectionString: process.env.SUPABASE_DB_URL,
+    requireExistingPromotion: args.requireExistingPromotion === true
+  });
   console.log(JSON.stringify({ ok: true, ...result }, null, 2));
 } catch (error) {
   console.error(JSON.stringify({

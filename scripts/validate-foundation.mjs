@@ -199,6 +199,14 @@ if (!territorySchema.required?.includes("administrativeRole")) {
 if (JSON.stringify(territorySchema.properties?.administrativeRole?.enum) !== JSON.stringify(administrativeRoles)) {
   errors.push("territory schema administrativeRole enum differs from the approved contract");
 }
+const sourceCorrectionSchema =
+  territorySchema.properties?.provenance?.properties?.sourceCorrections?.items;
+if (
+  sourceCorrectionSchema?.properties?.field?.const !== "NUTS" ||
+  sourceCorrectionSchema?.properties?.ruleCode?.const !== "SIRUTA_REVIEWED_NUTS_CORRECTION"
+) {
+  errors.push("territory provenance must model reviewed NUTS source corrections explicitly");
+}
 const uuidV7Pattern = "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$";
 for (const [field, property] of Object.entries({
   territoryId: territorySchema.properties?.territoryId,
@@ -274,7 +282,11 @@ if (profile.totalRows !== 16978 || JSON.stringify(profile.levels) !== JSON.strin
 if (Object.values(profile.levels ?? {}).reduce((sum, value) => sum + value, 0) !== profile.totalRows) {
   errors.push("SIRUTA hierarchy-level volumes must sum to the total row count");
 }
-if (profile.checksumWarnings !== 77 || profile.nutsMissingValues !== 215) {
+if (
+  profile.checksumWarnings !== 77 ||
+  profile.nutsMissingValues !== 215 ||
+  profile.nuts3Codes !== 42
+) {
   errors.push("SIRUTA reviewed source-quality warning counts changed without a config review");
 }
 const reviewedSourceExceptions = {
@@ -292,6 +304,14 @@ const reviewedSourceExceptions = {
       isUat: true,
       isLocality: true,
       isCountySeat: true
+    }
+  },
+  nutsCountyCorrections: {
+    "52": {
+      countySiruta: "528",
+      sourceValue: "RO224",
+      canonicalValue: "RO314",
+      expectedRecordCount: 225
     }
   }
 };
@@ -415,9 +435,22 @@ for (const invariant of [
   "persist-credentials: false",
   "readReleaseBundle",
   "cmp --silent",
-  "release:promote:siruta"
+  "release:promote:siruta",
+  "--require-existing-promotion"
 ]) {
   if (!publishWorkflow.includes(invariant)) errors.push(`Release workflow invariant missing: ${invariant}`);
+}
+const draftReleaseIndex = publishWorkflow.indexOf("      - name: Create or verify the immutable draft release");
+const promoteReleaseIndex = publishWorkflow.indexOf("      - name: Promote canonical registry and stable atomically");
+const publishReleaseIndex = publishWorkflow.indexOf("      - name: Publish the promoted GitHub Release");
+const makePublicIndex = publishWorkflow.indexOf("gh release edit \"${tag}\" --draft=false");
+if (
+  draftReleaseIndex === -1 ||
+  promoteReleaseIndex <= draftReleaseIndex ||
+  publishReleaseIndex <= promoteReleaseIndex ||
+  makePublicIndex <= promoteReleaseIndex
+) {
+  errors.push("GitHub Release must remain draft until the atomic registry promotion succeeds");
 }
 
 const moveStableWorkflow = await load(".github/workflows/move-stable-release.yml");

@@ -144,7 +144,8 @@ jobs:
         run: |
           test "$(gh api "repos/${GITHUB_REPOSITORY}" --jq .visibility)" = "public"
           test "${IMMUTABILITY_CONFIRMED}" = "true"
-      - name: Create or verify the immutable GitHub Release
+      - name: Create or verify the immutable draft release
+        id: release
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_ID: ${{ inputs.release_id }}
@@ -155,6 +156,11 @@ jobs:
           files=(SHA256SUMS changelog.json manifest.json territories.csv territories.json validation-report.json)
           if gh release view "${tag}" >/dev/null 2>&1; then
             draft=$(gh release view "${tag}" --json isDraft --jq .isDraft)
+            if [[ "${draft}" == "true" ]]; then
+              state=draft
+            else
+              state=published
+            fi
           else
             if ! gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${tag}" >/dev/null 2>&1; then
               gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
@@ -165,6 +171,7 @@ jobs:
               --title "SIRUTA ${RELEASE_ID}" \
               --notes "Release verificabil Teritoriu.digital. Consultați manifest.json și SHA256SUMS."
             draft=true
+            state=draft
           fi
           if [[ "${draft}" == "true" ]]; then
             upload=()
@@ -174,10 +181,8 @@ jobs:
           downloaded=$(mktemp -d)
           gh release download "${tag}" --dir "${downloaded}"
           for file in "${files[@]}"; do cmp --silent "${bundle}/${file}" "${downloaded}/${file}"; done
-          if [[ "${draft}" == "true" ]]; then
-            gh release edit "${tag}" --draft=false --latest=false
-          fi
-      - name: Reverify published assets
+          echo "state=${state}" >> "${GITHUB_OUTPUT}"
+      - name: Reverify staged release assets
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_ID: ${{ inputs.release_id }}
@@ -196,9 +201,33 @@ jobs:
           RELEASE_ID: ${{ inputs.release_id }}
           RELEASE_RATIONALE: ${{ inputs.rationale }}
           RELEASE_ACTOR: ${{ github.actor }}
+          RELEASE_STATE: ${{ steps.release.outputs.state }}
         run: |
-          npm run release:promote:siruta -- \
-            --import-run-id "${IMPORT_RUN_ID}" \
-            --bundle-dir ".artifacts/releases/${RELEASE_ID}" \
-            --actor "github:${RELEASE_ACTOR}" \
+          set -euo pipefail
+          promotion_args=(
+            --import-run-id "${IMPORT_RUN_ID}"
+            --bundle-dir ".artifacts/releases/${RELEASE_ID}"
+            --actor "github:${RELEASE_ACTOR}"
             --rationale "${RELEASE_RATIONALE}"
+          )
+          if [[ "${RELEASE_STATE}" == "published" ]]; then
+            promotion_args+=(--require-existing-promotion)
+          fi
+          npm run release:promote:siruta -- "${promotion_args[@]}"
+      - name: Publish the promoted GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ inputs.release_id }}
+          RELEASE_STATE: ${{ steps.release.outputs.state }}
+        run: |
+          set -euo pipefail
+          tag="siruta-${RELEASE_ID}"
+          bundle=".artifacts/releases/${RELEASE_ID}"
+          if [[ "${RELEASE_STATE}" == "draft" ]]; then
+            gh release edit "${tag}" --draft=false --latest=false
+          fi
+          downloaded=$(mktemp -d)
+          gh release download "${tag}" --dir "${downloaded}"
+          for file in SHA256SUMS changelog.json manifest.json territories.csv territories.json validation-report.json; do
+            cmp --silent "${bundle}/${file}" "${downloaded}/${file}"
+          done

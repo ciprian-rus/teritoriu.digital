@@ -191,10 +191,32 @@ test("an exact promotion rerun is a no-op and never moves stable again", async (
     manifest: bundle.manifest,
     manifestSha256: bundle.manifestSha256,
     bundleArtifacts: bundle.artifacts
-  }, { client });
+  }, { client, requireExistingPromotion: true });
   assert.equal(promoted.created, false);
   assert.equal(client.calls.at(-1), "commit");
   assert.equal(client.calls.some((sql) => sql.includes("insert into registry.release_channels")), false);
+});
+
+test("a pre-existing public GitHub release cannot initiate a missing database promotion", async () => {
+  const { result, bundle } = candidateAndBundle();
+  const client = promotionClient(result.candidate, bundle);
+  await assert.rejects(
+    promoteSirutaRelease({
+      importRunId: IMPORT_RUN_ID,
+      actor: "publisher",
+      rationale: "Verific o reluare sigură după publicarea release-ului GitHub.",
+      candidate: result.candidate,
+      manifest: bundle.manifest,
+      manifestSha256: bundle.manifestSha256,
+      bundleArtifacts: bundle.artifacts
+    }, { client, requireExistingPromotion: true }),
+    { code: "PUBLIC_RELEASE_WITHOUT_PROMOTION" }
+  );
+  assert.equal(client.calls.at(-1), "rollback");
+  assert.equal(
+    client.calls.some((sql) => sql.includes("join registry.release_candidate_approvals")),
+    false
+  );
 });
 
 test("moves stable backward with an append-only rollback event", async () => {

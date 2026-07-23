@@ -106,6 +106,18 @@ test("blocks provenance drift, failed validation, bad dates and unsupported remo
   assert.throws(() => buildReleaseBundle(removed), /does not retire territories/);
 });
 
+test("blocks duplicate canonical identifiers before release publication", () => {
+  const duplicate = releaseInput();
+  const nuts = duplicate.candidate.territories[0].identifiers.find(
+    (identifier) => identifier.scheme === "eu.eurostat.nuts"
+  );
+  duplicate.candidate.territories[1].identifiers.push(structuredClone(nuts));
+  assert.throws(
+    () => buildReleaseBundle(duplicate),
+    /duplicate eu\.eurostat\.nuts identifier RO000/
+  );
+});
+
 test("detects any modified artifact before import or promotion", () => {
   const bundle = buildReleaseBundle(releaseInput());
   const corrupted = { artifacts: new Map(bundle.artifacts) };
