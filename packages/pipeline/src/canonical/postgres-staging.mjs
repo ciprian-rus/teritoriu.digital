@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import pg from "pg";
 
 import { uuidV7 } from "../acquisition/uuid-v7.mjs";
@@ -14,6 +15,29 @@ function requireUuid(value, field) {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(value)) {
     throw new TypeError(`${field} must be a UUIDv7`);
   }
+}
+
+export function sirutaImportIdempotencyKey({
+  snapshotSha256,
+  transformationVersion,
+  pipelineCommit
+}) {
+  if (!/^[0-9a-f]{64}$/.test(snapshotSha256 ?? "")) {
+    throw new TypeError("snapshotSha256 must be a lowercase SHA-256");
+  }
+  if (typeof transformationVersion !== "string" || transformationVersion.length === 0) {
+    throw new TypeError("transformationVersion must be a non-empty string");
+  }
+  if (!/^[0-9a-f]{40}$/.test(pipelineCommit ?? "")) {
+    throw new TypeError("pipelineCommit must be a 40-character Git commit SHA");
+  }
+  return createHash("sha256")
+    .update(JSON.stringify({
+      pipelineCommit,
+      snapshotSha256,
+      transformationVersion
+    }))
+    .digest("hex");
 }
 
 export async function loadSirutaIdentityIndex(client) {
