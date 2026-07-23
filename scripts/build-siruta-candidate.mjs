@@ -8,6 +8,7 @@ import { safeErrorMessage } from "../packages/pipeline/src/acquisition/errors.mj
 import { buildSirutaCandidate } from "../packages/pipeline/src/canonical/build-candidate.mjs";
 import {
   loadSirutaIdentityIndex,
+  sirutaImportIdempotencyKey,
   stageSirutaImport
 } from "../packages/pipeline/src/canonical/postgres-staging.mjs";
 
@@ -134,9 +135,11 @@ try {
   let staging = null;
   if (args.stage) {
     const importRunId = uuidV7();
-    const idempotencyKey = createHash("sha256")
-      .update(`${args.snapshotSha256}:${configuration.transformationVersion}`)
-      .digest("hex");
+    const idempotencyKey = sirutaImportIdempotencyKey({
+      snapshotSha256: args.snapshotSha256,
+      transformationVersion: configuration.transformationVersion,
+      pipelineCommit: args.pipelineCommit
+    });
     staging = await stageSirutaImport(
       {
         importRunId,

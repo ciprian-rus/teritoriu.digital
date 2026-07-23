@@ -28,7 +28,7 @@ stateDiagram-v2
     Published --> [*]
 ```
 
-Nicio etapă eșuată nu schimbă canalul `stable`, iar un candidat nu sare peste review. O rerulare folosește același snapshot și o cheie de idempotentă derivată din SHA-256 al snapshotului și versiunea transformării.
+Nicio etapă eșuată nu schimbă canalul `stable`, iar un candidat nu sare peste review. O reluare exactă folosește același snapshot și o cheie de idempotentă derivată din SHA-256 al snapshotului, versiunea transformării și commitul pipeline-ului. Același snapshot recanonicalizat pe un commit nou primește un import distinct și trece din nou prin review, fără ca metadatele pipeline-ului să schimbe hashul candidatului.
 
 ## Bitemporalitate
 

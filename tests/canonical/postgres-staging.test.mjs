@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   loadSirutaIdentityIndex,
+  sirutaImportIdempotencyKey,
   stageSirutaImport
 } from "../../packages/pipeline/src/canonical/postgres-staging.mjs";
 import { buildSirutaCandidateFromParsed } from "../../packages/pipeline/src/canonical/build-candidate.mjs";
@@ -69,6 +70,47 @@ test("loads active identifiers and deduplicates reused pending proposals", async
   assert.equal(index["1"][0].territoryId, "id-active");
   assert.equal(index["2"][0].origin, "proposal");
   assert.equal(index["2"].length, 1);
+});
+
+test("reuses the import key for an exact replay on the same pipeline commit", () => {
+  const input = {
+    snapshotSha256: SOURCE_SHA256,
+    transformationVersion: CONFIGURATION.transformationVersion,
+    pipelineCommit: "d".repeat(40)
+  };
+  assert.equal(
+    sirutaImportIdempotencyKey(input),
+    sirutaImportIdempotencyKey({ ...input })
+  );
+});
+
+test("creates a new import key for the same snapshot on a new pipeline commit", () => {
+  const input = {
+    snapshotSha256: SOURCE_SHA256,
+    transformationVersion: CONFIGURATION.transformationVersion
+  };
+  assert.notEqual(
+    sirutaImportIdempotencyKey({ ...input, pipelineCommit: "d".repeat(40) }),
+    sirutaImportIdempotencyKey({ ...input, pipelineCommit: "e".repeat(40) })
+  );
+});
+
+test("a pipeline-only recanonicalization preserves the candidate hash", () => {
+  const first = buildResult();
+  const second = buildResult();
+  const firstImportKey = sirutaImportIdempotencyKey({
+    snapshotSha256: SOURCE_SHA256,
+    transformationVersion: CONFIGURATION.transformationVersion,
+    pipelineCommit: "d".repeat(40)
+  });
+  const secondImportKey = sirutaImportIdempotencyKey({
+    snapshotSha256: SOURCE_SHA256,
+    transformationVersion: CONFIGURATION.transformationVersion,
+    pipelineCommit: "e".repeat(40)
+  });
+
+  assert.notEqual(firstImportKey, secondImportKey);
+  assert.equal(first.summary.candidateSha256, second.summary.candidateSha256);
 });
 
 test("stages raw rows, findings and identity decisions in one transaction without promotion", async () => {
