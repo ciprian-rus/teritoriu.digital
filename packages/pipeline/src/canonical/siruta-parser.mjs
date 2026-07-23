@@ -37,6 +37,13 @@ function parseLevel(value) {
   return sourceInteger(value, "NIV", { minimum: 1, maximum: 3 });
 }
 
+function parseFsl(value) {
+  if (typeof value !== "string" || !/^\d{13}$/.test(value.trim())) {
+    throw new TypeError("FSL must be a 13-digit classification code");
+  }
+  return value.trim();
+}
+
 function parseRecord(rawRecord) {
   const officialName = normalizeRomanianText(rawRecord.DENLOC);
   if (!officialName) throw new TypeError("DENLOC is required");
@@ -54,7 +61,7 @@ function parseRecord(rawRecord) {
       maximum: 9
     }),
     fsj: sourceInteger(rawRecord.FSJ, "FSJ", { allowZero: true, maximum: 99 }),
-    fsl: sourceInteger(rawRecord.FSL, "FSL", { allowZero: true, maximum: 99 }),
+    fsl: parseFsl(rawRecord.FSL),
     nuts: optionalSourceText(rawRecord.NUTS)?.toLocaleUpperCase("ro-RO") ?? null
   };
 }
