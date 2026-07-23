@@ -1,4 +1,4 @@
-import readXlsxFile from "read-excel-file/node";
+import { readSheet } from "read-excel-file/node";
 
 import { canonicalSha256 } from "./canonical-json.mjs";
 import {
@@ -132,6 +132,6 @@ export function parseSirutaRows(workbookRows, configuration) {
 
 export async function parseSirutaWorkbook(bytes, configuration, options = {}) {
   (options.containerInspector ?? inspectXlsxContainer)(bytes, configuration.xlsxLimits);
-  const rows = await (options.reader ?? readXlsxFile)(bytes, { sheet: 1 });
+  const rows = await (options.reader ?? readSheet)(bytes, { sheet: 1 });
   return parseSirutaRows(rows, configuration);
 }
