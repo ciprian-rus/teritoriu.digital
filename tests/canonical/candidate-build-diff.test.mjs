@@ -35,6 +35,7 @@ test("builds a deterministic canonical candidate with hierarchy, roles and prove
   const [county, commune, village] = first.candidate.territories;
   assert.equal(county.administrativeRole, "county_uat");
   assert.equal(county.countyTerritoryId, county.territoryId);
+  assert.equal(county.parentTerritoryId, null);
   assert.equal(commune.parentTerritoryId, county.territoryId);
   assert.equal(village.parentTerritoryId, commune.territoryId);
   assert.equal(village.countyTerritoryId, county.territoryId);
@@ -48,6 +49,77 @@ test("builds a deterministic canonical candidate with hierarchy, roles and prove
   });
   assert.equal(second.summary.candidateSha256, first.summary.candidateSha256);
   assert.deepEqual(second.candidate, first.candidate);
+});
+
+test("applies the reviewed Bucharest type definition only to SIRUTA 179132", () => {
+  const rows = cloneRows();
+  rows[2] = [
+    179132,
+    "MUNICIPIUL BUCUREȘTI",
+    0,
+    1,
+    1,
+    9,
+    2,
+    1,
+    1,
+    42,
+    "0101000000000",
+    "RO000"
+  ];
+  rows[3][4] = 179132;
+  const configuration = structuredClone(CONFIGURATION);
+  configuration.expectedProfile.checksumWarnings = 1;
+  configuration.reviewedSourceExceptions.recordTypeDefinitions = {
+    "179132": {
+      sourceTypeCode: 9,
+      sourceLevel: 2,
+      territoryType: "municipality",
+      administrativeRole: "local_uat",
+      isUat: true,
+      isLocality: true,
+      isCountySeat: true
+    }
+  };
+  const result = buildSirutaCandidateFromParsed(
+    parsedFixture(rows, configuration),
+    configuration,
+    {
+      sourceSnapshotId: SNAPSHOT_ID,
+      sourceSha256: SOURCE_SHA256,
+      uuidFactory: uuidSequence()
+    }
+  );
+
+  assert.equal(result.status, "passed");
+  const bucharest = result.candidate.territories.find((item) =>
+    item.identifiers.some(
+      (identifier) =>
+        identifier.scheme === "ro.ins.siruta" && identifier.value === "179132"
+    )
+  );
+  assert.equal(bucharest.territoryType, "municipality");
+  assert.equal(bucharest.administrativeRole, "local_uat");
+  assert.equal(bucharest.isUat, true);
+  assert.notEqual(bucharest.parentTerritoryId, null);
+
+  const driftedRows = structuredClone(rows);
+  driftedRows[2][5] = 10;
+  const drifted = buildSirutaCandidateFromParsed(
+    parsedFixture(driftedRows, configuration),
+    configuration,
+    {
+      sourceSnapshotId: SNAPSHOT_ID,
+      sourceSha256: SOURCE_SHA256,
+      uuidFactory: uuidSequence()
+    }
+  );
+  assert.equal(drifted.status, "blocked");
+  assert.ok(
+    drifted.findings.some(
+      (item) => item.ruleCode === "SIRUTA_REVIEWED_TYPE_OVERRIDE_MISMATCH"
+    )
+  );
 });
 
 test("ignores provenance-only changes but reports semantic field changes", () => {

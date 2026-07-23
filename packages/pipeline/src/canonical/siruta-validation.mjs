@@ -1,4 +1,4 @@
-import { sirutaTypeDefinition } from "./siruta-types.mjs";
+import { sirutaRecordTypeDefinition } from "./siruta-types.mjs";
 
 const BLOCKING_SEVERITIES = new Set(["error", "blocker"]);
 
@@ -29,7 +29,20 @@ export function sirutaChecksumIsValid(value) {
   return ((11 - (sum % 10)) % 10) === checkDigit;
 }
 
-function detectCycles(bySiruta) {
+export function resolvedSirutaParent(record, configuration = {}) {
+  if (record.parentSiruta === "0") return null;
+  const rootParent = configuration.reviewedSourceExceptions?.rootParentSentinel;
+  if (
+    rootParent &&
+    record.level === rootParent.sourceLevel &&
+    record.parentSiruta === rootParent.value
+  ) {
+    return null;
+  }
+  return record.parentSiruta;
+}
+
+function detectCycles(bySiruta, configuration) {
   const state = new Map();
   const cycles = [];
 
@@ -43,8 +56,9 @@ function detectCycles(bySiruta) {
     }
 
     state.set(code, "visiting");
-    const parent = bySiruta.get(code)?.parentSiruta;
-    if (parent && parent !== "0" && bySiruta.has(parent)) visit(parent, path.concat(code));
+    const record = bySiruta.get(code);
+    const parent = record ? resolvedSirutaParent(record, configuration) : null;
+    if (parent && bySiruta.has(parent)) visit(parent, path.concat(code));
     state.set(code, "done");
   }
 
@@ -68,9 +82,21 @@ export function validateSirutaRecords(parsed, configuration) {
   const levelCounts = { "1": 0, "2": 0, "3": 0 };
   const countyByCode = new Map();
   const nutsByCountyCode = new Map();
+  const recordTypeDefinitions =
+    configuration.reviewedSourceExceptions?.recordTypeDefinitions ?? {};
+  const rootParentSentinel =
+    configuration.reviewedSourceExceptions?.rootParentSentinel;
+  let rootParentSentinels = 0;
 
   for (const { parsedRecord: record } of validRecords) {
     levelCounts[String(record.level)] = (levelCounts[String(record.level)] ?? 0) + 1;
+    if (
+      rootParentSentinel &&
+      record.level === rootParentSentinel.sourceLevel &&
+      record.parentSiruta === rootParentSentinel.value
+    ) {
+      rootParentSentinels += 1;
+    }
     if (bySiruta.has(record.siruta)) {
       findings.push(
         finding(
@@ -85,7 +111,28 @@ export function validateSirutaRecords(parsed, configuration) {
       bySiruta.set(record.siruta, record);
     }
 
-    const definition = sirutaTypeDefinition(record.typeCode, record.officialName);
+    const configuredDefinition = recordTypeDefinitions[record.siruta];
+    const configuredDefinitionMatches =
+      configuredDefinition &&
+      configuredDefinition.sourceTypeCode === record.typeCode &&
+      configuredDefinition.sourceLevel === record.level;
+    if (configuredDefinition && !configuredDefinitionMatches) {
+      findings.push(
+        finding(
+          "SIRUTA_REVIEWED_TYPE_OVERRIDE_MISMATCH",
+          "blocker",
+          "A record with a reviewed SIRUTA type override changed its source type or hierarchy level",
+          {
+            expectedTypeCode: configuredDefinition.sourceTypeCode,
+            observedTypeCode: record.typeCode,
+            expectedLevel: configuredDefinition.sourceLevel,
+            observedLevel: record.level
+          },
+          record.siruta
+        )
+      );
+    }
+    const definition = sirutaRecordTypeDefinition(record, configuration);
     if (!definition) {
       findings.push(
         finding(
@@ -153,8 +200,23 @@ export function validateSirutaRecords(parsed, configuration) {
     }
   }
 
+  for (const siruta of Object.keys(recordTypeDefinitions)) {
+    if (!bySiruta.has(siruta)) {
+      findings.push(
+        finding(
+          "SIRUTA_REVIEWED_TYPE_OVERRIDE_MISSING",
+          "blocker",
+          "A record with a reviewed SIRUTA type override is absent from the snapshot",
+          { siruta },
+          siruta
+        )
+      );
+    }
+  }
+
   for (const { parsedRecord: record } of validRecords) {
-    if (record.level > 1 && record.parentSiruta === "0") {
+    const parentSiruta = resolvedSirutaParent(record, configuration);
+    if (record.level > 1 && parentSiruta === null) {
       findings.push(
         finding(
           "SIRUTA_REQUIRED_PARENT_MISSING",
@@ -165,19 +227,19 @@ export function validateSirutaRecords(parsed, configuration) {
         )
       );
     }
-    if (record.parentSiruta !== "0" && !bySiruta.has(record.parentSiruta)) {
+    if (parentSiruta !== null && !bySiruta.has(parentSiruta)) {
       findings.push(
         finding(
           "SIRUTA_PARENT_MISSING",
           "blocker",
           "The superior SIRUTA code does not exist in the same snapshot",
-          { parentSiruta: record.parentSiruta },
+          { parentSiruta },
           record.siruta
         )
       );
     }
-    const parent = bySiruta.get(record.parentSiruta);
-    if (record.level === 1 && record.parentSiruta !== "0") {
+    const parent = parentSiruta === null ? null : bySiruta.get(parentSiruta);
+    if (record.level === 1 && parentSiruta !== null) {
       findings.push(
         finding(
           "SIRUTA_ROOT_PARENT_INVALID",
@@ -227,7 +289,7 @@ export function validateSirutaRecords(parsed, configuration) {
     }
   }
 
-  for (const cycle of detectCycles(bySiruta)) {
+  for (const cycle of detectCycles(bySiruta, configuration)) {
     findings.push(
       finding("SIRUTA_HIERARCHY_CYCLE", "blocker", "The SIRUTA hierarchy contains a cycle", { cycle })
     );
@@ -255,6 +317,24 @@ export function validateSirutaRecords(parsed, configuration) {
         )
       );
     }
+  }
+  if (
+    rootParentSentinel &&
+    rootParentSentinels !== rootParentSentinel.expectedCount
+  ) {
+    findings.push(
+      finding(
+        "SIRUTA_ROOT_PARENT_SENTINEL_COUNT_CHANGED",
+        "blocker",
+        "The number of reviewed root parent sentinel values differs from the source baseline",
+        {
+          sentinel: rootParentSentinel.value,
+          sourceLevel: rootParentSentinel.sourceLevel,
+          expected: rootParentSentinel.expectedCount,
+          observed: rootParentSentinels
+        }
+      )
+    );
   }
 
   const invalidChecksums = validRecords
@@ -311,6 +391,7 @@ export function validateSirutaRecords(parsed, configuration) {
       uniqueSirutaCodes: bySiruta.size,
       countyCodes: countyByCode.size,
       nuts3Codes: new Set(nutsByCountyCode.values()).size,
+      rootParentSentinels,
       checksumWarnings: invalidChecksums.length,
       nutsMissingValues: missingNuts.length
     },

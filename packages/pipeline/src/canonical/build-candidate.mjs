@@ -10,18 +10,24 @@ import {
   shortAdministrativeName
 } from "./normalization.mjs";
 import { parseSirutaWorkbook } from "./siruta-parser.mjs";
-import { sirutaTypeDefinition } from "./siruta-types.mjs";
-import { summarizeFindings, validateSirutaRecords } from "./siruta-validation.mjs";
+import { sirutaRecordTypeDefinition } from "./siruta-types.mjs";
+import {
+  resolvedSirutaParent,
+  summarizeFindings,
+  validateSirutaRecords
+} from "./siruta-validation.mjs";
 
-function buildTerritories(parsed, validation, identities, options) {
+function buildTerritories(parsed, validation, identities, configuration, options) {
   return parsed.records
     .filter((record) => record.parseStatus === "parsed")
     .map((sourceRecord) => {
       const record = sourceRecord.parsedRecord;
-      const definition = sirutaTypeDefinition(record.typeCode, record.officialName);
+      const definition = sirutaRecordTypeDefinition(record, configuration);
       const territoryId = identities.territoryIds.get(record.siruta);
-      const parentTerritoryId =
-        record.parentSiruta === "0" ? null : identities.territoryIds.get(record.parentSiruta) ?? null;
+      const parentSiruta = resolvedSirutaParent(record, configuration);
+      const parentTerritoryId = parentSiruta
+        ? identities.territoryIds.get(parentSiruta) ?? null
+        : null;
       const countySiruta = validation.countyByCode.get(record.countyCode);
       const countyTerritoryId = countySiruta ? identities.territoryIds.get(countySiruta) ?? null : null;
       const identifiers = [
@@ -87,10 +93,16 @@ export function buildSirutaCandidateFromParsed(parsed, configuration, options) {
   let territories = [];
 
   if (summarizeFindings(findings).status === "passed") {
-    territories = buildTerritories(parsed, structural, identities, {
-      sourceSnapshotId: options.sourceSnapshotId,
-      transformationVersion: configuration.transformationVersion
-    });
+    territories = buildTerritories(
+      parsed,
+      structural,
+      identities,
+      configuration,
+      {
+        sourceSnapshotId: options.sourceSnapshotId,
+        transformationVersion: configuration.transformationVersion
+      }
+    );
   }
 
   const diff = territories.length > 0
