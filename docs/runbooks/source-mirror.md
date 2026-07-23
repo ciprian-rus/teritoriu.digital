@@ -49,20 +49,26 @@ approve the candidate explicitly, and only then prepare/promote a new immutable 
 ## One-time bootstrap from private storage
 
 When the official host cannot deliver bytes reliably to GitHub Actions, an operator may
-pre-position the reviewed official XLSX at `source-snapshots/bootstrap/siruta-2025.xlsx`.
-Start the workflow manually and provide all four inputs:
+pre-position the reviewed official XLSX at the object configured by
+`bootstrapStorageObject` in `config/sources/siruta-2025.json`.
 
-- `storage_object_path`: an XLSX object below the dedicated `bootstrap/` prefix;
-- `expected_sha256`: the exact lowercase SHA-256 computed before upload;
-- `expected_size`: the exact positive byte size;
-- `provenance_url`: the allowlisted HTTPS URL identifying the official source.
+The manual workflow is intentionally input-free:
 
-The service-role download is private and fail-closed. Before any archive or database write,
+1. open `Mirror official SIRUTA source`;
+2. choose `Run workflow` on `main`;
+3. confirm `Run workflow`.
+
+The pipeline resolves the private object path, expected SHA-256, exact byte size and official
+provenance URL from the versioned source configuration. This removes repetitive data entry and
+prevents a manual run from combining metadata that was not reviewed together.
+
+The service-role download remains private and fail-closed. Before any archive or database write,
 the pipeline verifies the path boundary, provenance allowlist, configured maximum size, exact
 size, exact SHA-256, detected XLSX type, and the complete canonical SIRUTA profile. Successful
 bytes are copied to the normal immutable content-addressed path and registered through the same
-transactional acquisition path. The temporary bootstrap object is never treated as a release and
-does not bypass canonicalization, diff review, approval, or stable-channel promotion.
+transactional acquisition path. The bootstrap object is never treated as a release and does not
+bypass canonicalization, diff review, approval, or stable-channel promotion.
 
-Scheduled runs continue to inspect the official source directly. Leaving
-`storage_object_path` empty preserves the normal official mirror behavior.
+For a future official snapshot, update `resourceUrl`, `bootstrapStorageObject` and
+`observedSnapshot` together through a reviewed pull request before running the workflow. Scheduled
+runs continue to inspect the configured official source directly.
