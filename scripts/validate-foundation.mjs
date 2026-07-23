@@ -46,7 +46,8 @@ const requiredFiles = [
   "supabase/migrations/202607220001_initial_registry.sql",
   "supabase/migrations/202607220002_source_snapshot_storage.sql",
   "supabase/migrations/202607220003_m2_identity_and_roles.sql",
-  "supabase/migrations/202607220004_m3_release_governance.sql"
+  "supabase/migrations/202607220004_m3_release_governance.sql",
+  "supabase/migrations/202607230001_identity_proposal_reuse.sql"
 ];
 
 const errors = [];
@@ -145,7 +146,21 @@ for (const invariant of m3MigrationInvariants) {
   }
 }
 
-const migrations = `${initialMigration}\n${m2Migration}\n${m3Migration}`;
+const identityProposalMigration = await load("supabase/migrations/202607230001_identity_proposal_reuse.sql");
+const identityProposalMigrationInvariants = [
+  "drop index if exists registry.identity_decisions_proposed_idx",
+  "create index identity_decisions_proposed_idx",
+  "create index identity_decisions_source_proposed_idx",
+  "pg_advisory_xact_lock",
+  "identity_decisions_proposal_reuse_guard"
+];
+for (const invariant of identityProposalMigrationInvariants) {
+  if (!identityProposalMigration.toLowerCase().includes(invariant)) {
+    errors.push(`Identity proposal reuse migration invariant missing: ${invariant}`);
+  }
+}
+
+const migrations = `${initialMigration}\n${m2Migration}\n${m3Migration}\n${identityProposalMigration}`;
 if (/service_role|sb_secret_|supabase_service_role_key/i.test(migrations)) {
   errors.push("migrations must not contain privileged API key names or values");
 }

@@ -52,12 +52,14 @@ function clientMock(options = {}) {
   };
 }
 
-test("loads active identifiers and pending proposals into the reconciliation index", async () => {
+test("loads active identifiers and deduplicates reused pending proposals", async () => {
   const client = {
-    async query() {
+    async query(sql) {
+      assert.match(sql, /select distinct\s+decision\.source_record_key/);
       return {
         rows: [
           { value: "1", territory_id: "id-active", status: "active", valid_to: null, origin: "identifier" },
+          { value: "2", territory_id: "id-proposed", status: "proposed", valid_to: null, origin: "proposal" },
           { value: "2", territory_id: "id-proposed", status: "proposed", valid_to: null, origin: "proposal" }
         ]
       };
@@ -66,6 +68,7 @@ test("loads active identifiers and pending proposals into the reconciliation ind
   const index = await loadSirutaIdentityIndex(client);
   assert.equal(index["1"][0].territoryId, "id-active");
   assert.equal(index["2"][0].origin, "proposal");
+  assert.equal(index["2"].length, 1);
 });
 
 test("stages raw rows, findings and identity decisions in one transaction without promotion", async () => {

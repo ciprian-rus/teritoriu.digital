@@ -7,7 +7,8 @@ const REQUIRED_MIGRATIONS = [
   "202607220001",
   "202607220002",
   "202607220003",
-  "202607220004"
+  "202607220004",
+  "202607230001"
 ];
 const REQUIRED_TABLES = [
   "registry.source_snapshots",

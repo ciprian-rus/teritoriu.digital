@@ -23,7 +23,7 @@ select extensions.has_column('registry', 'territory_revisions', 'administrative_
 select extensions.has_column('registry', 'identity_decisions', 'proposed_territory_id', 'new identities are proposed before promotion');
 select extensions.has_column('registry', 'territory_revisions', 'release_id', 'revisions record their release provenance');
 select extensions.has_column('registry', 'territory_identifiers', 'release_id', 'identifiers record their release provenance');
-select extensions.has_index('registry', 'identity_decisions', 'identity_decisions_proposed_idx', 'proposed identities are unique');
+select extensions.has_index('registry', 'identity_decisions', 'identity_decisions_proposed_idx', 'proposed identities are indexed for safe reuse');
 select extensions.ok(
   exists (
     select 1
