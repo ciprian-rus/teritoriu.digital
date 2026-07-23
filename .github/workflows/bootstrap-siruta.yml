@@ -1,0 +1,75 @@
+name: Bootstrap SIRUTA from verified attachment
+
+on:
+  workflow_dispatch:
+    inputs:
+      snapshot_url:
+        description: Exact GitHub user-attachment URL for the official file
+        required: true
+        type: string
+      expected_sha256:
+        description: Exact lowercase SHA-256 of the official file
+        required: true
+        type: string
+      expected_size:
+        description: Exact file size in bytes
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: acquire-siruta
+  cancel-in-progress: false
+
+jobs:
+  bootstrap:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install
+        run: npm ci --ignore-scripts
+      - name: Validate manual gates
+        env:
+          SNAPSHOT_URL: ${{ inputs.snapshot_url }}
+          EXPECTED_SHA256: ${{ inputs.expected_sha256 }}
+          EXPECTED_SIZE: ${{ inputs.expected_size }}
+        run: |
+          [[ "${SNAPSHOT_URL}" =~ ^https://github\.com/user-attachments/assets/[0-9a-fA-F-]{36}$ ]]
+          [[ "${EXPECTED_SHA256}" =~ ^[0-9a-f]{64}$ ]]
+          [[ "${EXPECTED_SIZE}" =~ ^[1-9][0-9]{0,7}$ ]]
+          (( EXPECTED_SIZE <= 5242880 ))
+      - name: Download exact GitHub attachment
+        env:
+          SNAPSHOT_URL: ${{ inputs.snapshot_url }}
+          EXPECTED_SIZE: ${{ inputs.expected_size }}
+        run: |
+          curl --fail --silent --show-error --location \
+            --proto '=https' --max-redirs 3 --connect-timeout 15 --max-time 120 \
+            --max-filesize 5242880 --output /tmp/siruta-manual.xlsx "${SNAPSHOT_URL}"
+          [[ "$(stat --format=%s /tmp/siruta-manual.xlsx)" == "${EXPECTED_SIZE}" ]]
+      - name: Validate, archive and register snapshot
+        env:
+          SNAPSHOT_URL: ${{ inputs.snapshot_url }}
+          EXPECTED_SHA256: ${{ inputs.expected_sha256 }}
+          EXPECTED_SIZE: ${{ inputs.expected_size }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          npm run acquire:siruta -- \
+            --manual-file /tmp/siruta-manual.xlsx \
+            --expected-sha256 "${EXPECTED_SHA256}" \
+            --expected-size "${EXPECTED_SIZE}" \
+            --provenance-url "${SNAPSHOT_URL}" \
+            --publish

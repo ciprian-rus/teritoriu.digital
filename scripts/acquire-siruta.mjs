@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 
 import { acquireSource } from "../packages/pipeline/src/acquisition/acquire.mjs";
 import { safeErrorMessage } from "../packages/pipeline/src/acquisition/errors.mjs";
+import { loadManualSnapshot } from "../packages/pipeline/src/acquisition/manual-input.mjs";
 import { validateSirutaSnapshot } from "../packages/pipeline/src/canonical/build-candidate.mjs";
 
 const SOURCE_FILE = new URL("../config/sources/siruta-2025.json", import.meta.url);
@@ -12,6 +13,7 @@ function usage() {
   npm run acquire:siruta -- --dry-run [--expected-sha256 <sha>] [--fail-on-observed-change]
   npm run acquire:siruta -- --archive-dir <path> [--expected-sha256 <sha>]
   npm run acquire:siruta -- --publish [--expected-sha256 <sha>]
+  npm run acquire:siruta -- --manual-file <path> --expected-sha256 <sha> --expected-size <bytes> --provenance-url <url> --publish
 
 Publish mode requires SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and SUPABASE_DB_URL.`;
 }
@@ -24,6 +26,9 @@ function parseArguments(args) {
     else if (argument === "--publish") result.publish = true;
     else if (argument === "--archive-dir") result.localArchiveDirectory = args[++index];
     else if (argument === "--expected-sha256") result.expectedSha256 = args[++index];
+    else if (argument === "--expected-size") result.expectedSize = Number(args[++index]);
+    else if (argument === "--manual-file") result.manualFile = args[++index];
+    else if (argument === "--provenance-url") result.provenanceUrl = args[++index];
     else if (argument === "--fail-on-observed-change") result.failOnObservedChange = true;
     else if (argument === "--help" || argument === "-h") result.help = true;
     else throw new Error(`Unknown argument: ${argument}`);
@@ -35,6 +40,14 @@ function parseArguments(args) {
   }
   if (result.expectedSha256 && !/^[0-9a-f]{64}$/.test(result.expectedSha256)) {
     throw new Error("--expected-sha256 must contain 64 lowercase hexadecimal characters");
+  }
+  if (result.manualFile) {
+    if (!result.publish) throw new Error("--manual-file requires --publish");
+    if (!result.expectedSha256) throw new Error("--manual-file requires --expected-sha256");
+    if (!Number.isSafeInteger(result.expectedSize) || result.expectedSize < 1) {
+      throw new Error("--manual-file requires a positive integer --expected-size");
+    }
+    if (!result.provenanceUrl) throw new Error("--manual-file requires --provenance-url");
   }
   return result;
 }
@@ -95,6 +108,13 @@ try {
     expectedSha256: args.expectedSha256,
     snapshotValidator: (bytes) => validateSirutaSnapshot(bytes, transformation)
   };
+  if (args.manualFile) {
+    options.providedDownload = await loadManualSnapshot(args.manualFile, source, {
+      sha256: args.expectedSha256,
+      sizeBytes: args.expectedSize,
+      provenanceUrl: args.provenanceUrl
+    });
+  }
   if (args.publish) {
     options.supabaseUrl = requireEnvironment("SUPABASE_URL");
     options.serviceRoleKey = requireEnvironment("SUPABASE_SERVICE_ROLE_KEY");

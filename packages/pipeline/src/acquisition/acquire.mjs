@@ -12,25 +12,28 @@ function withPhase(error, phase) {
 }
 
 export async function acquireSource(source, options = {}) {
-  let discovery;
-  try {
-    discovery = options.skipDiscovery
-      ? { resourceUrl: source.resourceUrl, skipped: true }
-      : await discoverCkanResource(source, options.dependencies);
-  } catch (error) {
-    throw withPhase(error, "ckan-discovery");
-  }
-
   let download;
-  try {
-    download = await downloadSnapshot(
-      { ...source, resourceUrl: discovery.resourceUrl },
-      options.dependencies
-    );
-  } catch (error) {
-    throw withPhase(error, "snapshot-download");
+  if (options.providedDownload) {
+    download = options.providedDownload;
+  } else {
+    let discovery;
+    try {
+      discovery = options.skipDiscovery
+        ? { resourceUrl: source.resourceUrl, skipped: true }
+        : await discoverCkanResource(source, options.dependencies);
+    } catch (error) {
+      throw withPhase(error, "ckan-discovery");
+    }
+    try {
+      download = await downloadSnapshot(
+        { ...source, resourceUrl: discovery.resourceUrl },
+        options.dependencies
+      );
+    } catch (error) {
+      throw withPhase(error, "snapshot-download");
+    }
+    download.discovery = discovery;
   }
-  download.discovery = discovery;
 
   if (options.expectedSha256 && download.sha256 !== options.expectedSha256) {
     const error = new Error("Downloaded snapshot does not match the explicitly required SHA-256");

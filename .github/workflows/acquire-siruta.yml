@@ -11,6 +11,7 @@ on:
       - "packages/pipeline/src/acquisition/**"
       - "packages/pipeline/src/canonical/**"
       - "scripts/acquire-siruta.mjs"
+      - ".github/workflows/bootstrap-siruta.yml"
   schedule:
     - cron: "17 4 * * 3"
   workflow_dispatch:
