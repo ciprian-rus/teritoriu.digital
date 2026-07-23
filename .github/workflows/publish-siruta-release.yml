@@ -153,7 +153,21 @@ jobs:
           set -euo pipefail
           tag="siruta-${RELEASE_ID}"
           bundle=".artifacts/releases/${RELEASE_ID}"
-          files=(SHA256SUMS changelog.json manifest.json territories.csv territories.json validation-report.json)
+          files=(
+            SHA256SUMS
+            changelog.json
+            contract.json
+            contract.schema.json
+            manifest.json
+            release-manifest.schema.json
+            territories.csv
+            territories.json
+            territories.ndjson
+            territories.schema.json
+            territory-identifiers.csv
+            territory.schema.json
+            validation-report.json
+          )
           if gh release view "${tag}" >/dev/null 2>&1; then
             draft=$(gh release view "${tag}" --json isDraft --jq .isDraft)
             if [[ "${draft}" == "true" ]]; then
@@ -169,7 +183,7 @@ jobs:
             fi
             gh release create "${tag}" --verify-tag --draft --latest=false \
               --title "SIRUTA ${RELEASE_ID}" \
-              --notes "Release verificabil Teritoriu.digital. Consultați manifest.json și SHA256SUMS."
+              --notes "Release verificabil Teritoriu.digital. Consultați contract.json, manifest.json și SHA256SUMS."
             draft=true
             state=draft
           fi
@@ -191,7 +205,11 @@ jobs:
           bundle=".artifacts/releases/${RELEASE_ID}"
           downloaded=$(mktemp -d)
           gh release download "${tag}" --dir "${downloaded}"
-          for file in SHA256SUMS changelog.json manifest.json territories.csv territories.json validation-report.json; do
+          for file in \
+            SHA256SUMS changelog.json contract.json contract.schema.json manifest.json \
+            release-manifest.schema.json territories.csv territories.json territories.ndjson \
+            territories.schema.json territory-identifiers.csv territory.schema.json \
+            validation-report.json; do
             cmp --silent "${bundle}/${file}" "${downloaded}/${file}"
           done
       - name: Promote canonical registry and stable atomically
@@ -228,6 +246,10 @@ jobs:
           fi
           downloaded=$(mktemp -d)
           gh release download "${tag}" --dir "${downloaded}"
-          for file in SHA256SUMS changelog.json manifest.json territories.csv territories.json validation-report.json; do
+          for file in \
+            SHA256SUMS changelog.json contract.json contract.schema.json manifest.json \
+            release-manifest.schema.json territories.csv territories.json territories.ndjson \
+            territories.schema.json territory-identifiers.csv territory.schema.json \
+            validation-report.json; do
             cmp --silent "${bundle}/${file}" "${downloaded}/${file}"
           done

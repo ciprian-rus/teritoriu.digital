@@ -5,7 +5,11 @@ import os from "node:os";
 import path from "node:path";
 
 import { buildSirutaCandidateFromParsed } from "../../packages/pipeline/src/canonical/build-candidate.mjs";
-import { buildReleaseBundle, verifyReleaseBundle } from "../../packages/pipeline/src/release/artifact-builder.mjs";
+import {
+  buildReleaseBundle,
+  unchangedReleaseDiff,
+  verifyReleaseBundle
+} from "../../packages/pipeline/src/release/artifact-builder.mjs";
 import { readReleaseBundle, writeReleaseBundle } from "../../packages/pipeline/src/release/bundle-files.mjs";
 import {
   CONFIGURATION,
@@ -70,9 +74,16 @@ test("builds byte-identical JSON, CSV, manifest, changelog and checksums", () =>
   assert.deepEqual([...first.artifacts.keys()].sort(), [
     "SHA256SUMS",
     "changelog.json",
+    "contract.json",
+    "contract.schema.json",
     "manifest.json",
+    "release-manifest.schema.json",
     "territories.csv",
     "territories.json",
+    "territories.ndjson",
+    "territories.schema.json",
+    "territory-identifiers.csv",
+    "territory.schema.json",
     "validation-report.json"
   ]);
   for (const [name, bytes] of first.artifacts) assert.deepEqual(bytes, second.artifacts.get(name));
@@ -82,9 +93,13 @@ test("builds byte-identical JSON, CSV, manifest, changelog and checksums", () =>
   assert.equal(verification.manifest.counts.territories, 3);
   assert.equal(verification.manifest.quality.status, "passed_with_warnings");
   assert.equal(verification.manifest.license.spdx, "CC-BY-4.0");
+  assert.equal(verification.contract.contractVersion, "1.0.0");
+  assert.equal(verification.payload.contractVersion, "1.0.0");
   const csv = first.artifacts.get("territories.csv").toString("utf8");
   assert.match(csv, /"JUDEȚUL TEST"/u);
   assert.equal(csv.endsWith("\n"), true);
+  assert.equal(first.artifacts.get("territories.ndjson").toString("utf8").trimEnd().split("\n").length, 3);
+  assert.match(first.artifacts.get("territory-identifiers.csv").toString("utf8"), /ro\.ins\.siruta/);
 });
 
 test("blocks provenance drift, failed validation, bad dates and unsupported removals", () => {
@@ -104,6 +119,19 @@ test("blocks provenance drift, failed validation, bad dates and unsupported remo
   const removed = releaseInput();
   removed.diff.removed = ["99"];
   assert.throws(() => buildReleaseBundle(removed), /does not retire territories/);
+});
+
+test("builds a contract-only follow-up release only as an unchanged candidate", () => {
+  const input = releaseInput({
+    releaseId: "2026.07.23.1",
+    publishedAt: "2026-07-23T16:00:00.000Z",
+    previousReleaseId: "2026.07.22.1"
+  });
+  input.diff = unchangedReleaseDiff(input.candidate.territories);
+  const bundle = buildReleaseBundle(input);
+  assert.equal(bundle.manifest.previousReleaseId, "2026.07.22.1");
+  assert.equal(JSON.parse(bundle.artifacts.get("changelog.json")).unchanged, 3);
+  assert.deepEqual(JSON.parse(bundle.artifacts.get("changelog.json")).changed, []);
 });
 
 test("blocks duplicate canonical identifiers before release publication", () => {
@@ -129,7 +157,7 @@ test("writes create-only release files and accepts only an exact rerun", async (
   const directory = await mkdtemp(path.join(os.tmpdir(), "teritoriu-release-"));
   const bundle = buildReleaseBundle(releaseInput());
   const first = await writeReleaseBundle(directory, bundle);
-  assert.equal(first.created.length, 6);
+  assert.equal(first.created.length, 13);
   const second = await writeReleaseBundle(directory, bundle);
   assert.equal(second.created.length, 0);
   const loaded = await readReleaseBundle(directory);

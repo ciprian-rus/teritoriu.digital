@@ -11,6 +11,7 @@ const requiredFiles = [
   "docs/adr/0002-persistent-territory-identifiers.md",
   "docs/adr/0003-immutable-releases.md",
   "docs/data-contract.md",
+  "docs/public-contract-v1.md",
   "docs/governance/roles-and-promotion.md",
   "docs/law-alignment.md",
   "docs/runbooks/siruta-canonicalization.md",
@@ -36,12 +37,17 @@ const requiredFiles = [
   "packages/pipeline/src/release/bundle-files.mjs",
   "packages/pipeline/src/release/postgres-release.mjs",
   "packages/consumer/src/import-release.mjs",
+  "packages/consumer/src/index.mjs",
+  "packages/consumer/src/verify-release.mjs",
   "scripts/approve-siruta-candidate.mjs",
   "scripts/move-stable-release.mjs",
   "scripts/prepare-siruta-release.mjs",
   "scripts/promote-siruta-release.mjs",
+  "scripts/verify-release-bundle.mjs",
   "scripts/verify-production-registry.mjs",
+  "schemas/contract.schema.json",
   "schemas/release-manifest.schema.json",
+  "schemas/territories.schema.json",
   "schemas/territory.schema.json",
   "supabase/migrations/202607220001_initial_registry.sql",
   "supabase/migrations/202607220002_source_snapshot_storage.sql",
@@ -81,14 +87,18 @@ for (const path of requiredFiles) await load(path);
 const [
   packageJson,
   packageLock,
+  contractSchema,
   manifestSchema,
+  territoriesSchema,
   territorySchema,
   sirutaSource,
   sirutaTransform
 ] = await Promise.all([
   loadJson("package.json"),
   loadJson("package-lock.json"),
+  loadJson("schemas/contract.schema.json"),
   loadJson("schemas/release-manifest.schema.json"),
+  loadJson("schemas/territories.schema.json"),
   loadJson("schemas/territory.schema.json"),
   loadJson("config/sources/siruta-2025.json"),
   loadJson("config/transforms/siruta-2025.json")
@@ -165,7 +175,12 @@ if (/service_role|sb_secret_|supabase_service_role_key/i.test(migrations)) {
   errors.push("migrations must not contain privileged API key names or values");
 }
 
-for (const [name, schema] of Object.entries({ manifestSchema, territorySchema })) {
+for (const [name, schema] of Object.entries({
+  contractSchema,
+  manifestSchema,
+  territoriesSchema,
+  territorySchema
+})) {
   if (schema.$schema !== "https://json-schema.org/draft/2020-12/schema") {
     errors.push(`${name}: expected JSON Schema draft 2020-12`);
   }
@@ -177,6 +192,9 @@ for (const [name, schema] of Object.entries({ manifestSchema, territorySchema })
 try {
   const ajv = new Ajv2020({ allErrors: true, strict: true });
   addFormats(ajv);
+  ajv.addSchema(territorySchema);
+  ajv.compile(contractSchema);
+  ajv.compile(territoriesSchema);
   const validateManifestExample = ajv.compile(manifestSchema);
   if (!validateManifestExample(manifestExample)) {
     errors.push(`release manifest example fails its schema: ${JSON.stringify(validateManifestExample.errors)}`);
@@ -187,6 +205,7 @@ try {
 
 for (const field of [
   "releaseTag",
+  "contract",
   "transformationVersion",
   "candidateSha256",
   "approval",
@@ -198,6 +217,25 @@ for (const field of [
 }
 if (manifestSchema.properties?.license?.properties?.spdx?.const !== "CC-BY-4.0") {
   errors.push("release manifest must preserve the reviewed SIRUTA CC-BY-4.0 license");
+}
+if (
+  manifestSchema.properties?.contract?.properties?.name?.const !==
+    "teritoriu.digital/siruta-release" ||
+  manifestSchema.properties?.contract?.properties?.descriptorArtifact?.const !== "contract.json"
+) {
+  errors.push("release manifest must bind the reviewed public contract descriptor");
+}
+if (
+  contractSchema.properties?.compatibility?.properties?.supportedMajor?.const !== 1 ||
+  contractSchema.properties?.compatibility?.properties?.breakingChanges?.const !== "new-major-required"
+) {
+  errors.push("public contract must preserve the reviewed SemVer compatibility policy");
+}
+if (
+  territoriesSchema.properties?.territories?.items?.$ref !== territorySchema.$id ||
+  !territoriesSchema.required?.includes("contractVersion")
+) {
+  errors.push("territories payload schema must bind the public contract and territory schema");
 }
 
 const administrativeRoles = [
@@ -450,10 +488,26 @@ for (const invariant of [
   "persist-credentials: false",
   "readReleaseBundle",
   "cmp --silent",
+  "contract.json",
+  "territories.ndjson",
+  "territory-identifiers.csv",
   "release:promote:siruta",
   "--require-existing-promotion"
 ]) {
   if (!publishWorkflow.includes(invariant)) errors.push(`Release workflow invariant missing: ${invariant}`);
+}
+
+const prepareReleaseScript = await load("scripts/prepare-siruta-release.mjs");
+for (const invariant of [
+  "registry.release_channels",
+  "registry.release_candidate_approvals",
+  "candidate_sha256 !== context.candidateSha256",
+  "unchangedReleaseDiff",
+  "previousRelease?.release_id ?? null"
+]) {
+  if (!prepareReleaseScript.includes(invariant)) {
+    errors.push(`Contract follow-up release invariant missing: ${invariant}`);
+  }
 }
 const draftReleaseIndex = publishWorkflow.indexOf("      - name: Create or verify the immutable draft release");
 const promoteReleaseIndex = publishWorkflow.indexOf("      - name: Promote canonical registry and stable atomically");

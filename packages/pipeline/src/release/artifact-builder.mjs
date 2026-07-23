@@ -3,14 +3,20 @@ import { createHash } from "node:crypto";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
 
+import contractSchema from "../../../../schemas/contract.schema.json" with { type: "json" };
 import manifestSchema from "../../../../schemas/release-manifest.schema.json" with { type: "json" };
+import territoriesSchema from "../../../../schemas/territories.schema.json" with { type: "json" };
 import territorySchema from "../../../../schemas/territory.schema.json" with { type: "json" };
 import {
+  canonicalJson,
   canonicalJsonPretty,
   canonicalSha256
 } from "../canonical/canonical-json.mjs";
 
+export const PUBLIC_CONTRACT_NAME = "teritoriu.digital/siruta-release";
+export const PUBLIC_CONTRACT_VERSION = "1.0.0";
 const RELEASE_ID = /^[0-9]{4}\.[0-9]{2}\.[0-9]{2}\.[1-9][0-9]*$/;
+const SEMVER = /^[0-9]+\.[0-9]+\.[0-9]+$/;
 const UUID_V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const SHA256 = /^[0-9a-f]{64}$/;
 const COMMIT_SHA = /^[0-9a-f]{40}$/;
@@ -22,8 +28,15 @@ const DATA_LICENSE = Object.freeze({
   attribution: "Sursa datelor: Institutul Național de Statistică, SIRUTA 2025, publicat prin data.gov.ro."
 });
 const MEDIA_TYPES = Object.freeze({
+  "contract.json": "application/json",
+  "contract.schema.json": "application/schema+json",
+  "release-manifest.schema.json": "application/schema+json",
   "territories.json": "application/json",
+  "territories.ndjson": "application/x-ndjson",
+  "territories.schema.json": "application/schema+json",
   "territories.csv": "text/csv; charset=utf-8",
+  "territory-identifiers.csv": "text/csv; charset=utf-8",
+  "territory.schema.json": "application/schema+json",
   "validation-report.json": "application/json",
   "changelog.json": "application/json"
 });
@@ -67,17 +80,30 @@ function schemaErrors(validate) {
 function createValidators() {
   const ajv = new Ajv2020({ allErrors: true, strict: true });
   addFormats(ajv);
+  ajv.addSchema(territorySchema);
   return {
+    contract: ajv.compile(contractSchema),
     manifest: ajv.compile(manifestSchema),
-    territory: ajv.compile(territorySchema)
+    territories: ajv.compile(territoriesSchema),
+    territory: ajv.getSchema(territorySchema.$id)
   };
 }
 
 const validators = createValidators();
 
-function validateCandidate(candidate) {
+function majorVersion(value, field) {
+  if (!SEMVER.test(value ?? "")) fail(`${field} must use semantic versioning`);
+  return Number(value.split(".")[0]);
+}
+
+function validateCandidate(candidate, options = {}) {
   if (!candidate || typeof candidate !== "object") fail("candidate is required");
-  if (candidate.schemaVersion !== "1.0.0") fail("candidate schemaVersion must be 1.0.0");
+  if (options.requireExactSchemaVersion !== false && candidate.schemaVersion !== "1.0.0") {
+    fail("candidate schemaVersion must be 1.0.0");
+  }
+  if (options.requireExactSchemaVersion === false && majorVersion(candidate.schemaVersion, "candidate schemaVersion") !== 1) {
+    fail("candidate schemaVersion is not compatible with contract major 1");
+  }
   if (typeof candidate.transformationVersion !== "string" || candidate.transformationVersion.length === 0) {
     fail("candidate transformationVersion is required");
   }
@@ -92,7 +118,7 @@ function validateCandidate(candidate) {
   const identifierOwners = new Map();
   let previousSiruta = -1;
   for (const territory of candidate.territories) {
-    if (!validators.territory(territory)) {
+    if (options.validateLocalTerritorySchema !== false && !validators.territory(territory)) {
       fail(`territory schema validation failed: ${schemaErrors(validators.territory)}`);
     }
     if (ids.has(territory.territoryId)) fail(`duplicate territoryId ${territory.territoryId}`);
@@ -121,6 +147,28 @@ function validateCandidate(candidate) {
       }
     }
   }
+  validateTerritoryGraph(candidate.territories);
+}
+
+export function validateTerritoryGraph(territories) {
+  const byId = new Map(territories.map((territory) => [territory.territoryId, territory]));
+  const complete = new Set();
+  const active = new Set();
+
+  function visit(territoryId) {
+    if (complete.has(territoryId)) return;
+    if (active.has(territoryId)) fail(`release payload contains a hierarchy cycle at ${territoryId}`);
+    active.add(territoryId);
+    const parentId = byId.get(territoryId)?.parentTerritoryId ?? null;
+    if (parentId !== null) {
+      if (!byId.has(parentId)) fail(`release payload contains an unresolved parentTerritoryId`);
+      visit(parentId);
+    }
+    active.delete(territoryId);
+    complete.add(territoryId);
+  }
+
+  for (const territory of territories) visit(territory.territoryId);
 }
 
 function validateDiff(diff, previousReleaseId, territoryCount) {
@@ -140,6 +188,24 @@ function validateDiff(diff, previousReleaseId, territoryCount) {
   if (diff.removed.length > 0) {
     fail("M3 does not retire territories; removals require the historical-governance milestone");
   }
+}
+
+export function unchangedReleaseDiff(territories) {
+  return {
+    skipped: false,
+    baseline: true,
+    added: [],
+    removed: [],
+    changed: [],
+    sourceRecordChanged: [],
+    unchanged: territories.length,
+    findings: [],
+    ratios: {
+      totalDelta: 0,
+      removed: 0,
+      changed: 0
+    }
+  };
 }
 
 function validateMetadata(metadata, candidate, validationReport) {
@@ -250,6 +316,156 @@ export function territoriesCsv(territories) {
   return `${[headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\n")}\n`;
 }
 
+export function territoriesNdjson(territories) {
+  return `${territories.map((territory) => canonicalJson(territory)).join("\n")}\n`;
+}
+
+export function territoryIdentifiersCsv(territories) {
+  const headers = [
+    "territory_id",
+    "scheme",
+    "value",
+    "status",
+    "valid_from",
+    "valid_to"
+  ];
+  const rows = territories.flatMap((territory) =>
+    [...territory.identifiers]
+      .sort((left, right) =>
+        left.scheme.localeCompare(right.scheme) ||
+        left.value.localeCompare(right.value) ||
+        (left.validFrom ?? "").localeCompare(right.validFrom ?? "")
+      )
+      .map((identifier) => [
+        territory.territoryId,
+        identifier.scheme,
+        identifier.value,
+        identifier.status,
+        identifier.validFrom,
+        identifier.validTo
+      ])
+  );
+  return `${[headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\n")}\n`;
+}
+
+function publicContractDescriptor(schemaVersion) {
+  return {
+    $schema: contractSchema.$id,
+    name: PUBLIC_CONTRACT_NAME,
+    contractVersion: PUBLIC_CONTRACT_VERSION,
+    schemaVersion,
+    compatibility: {
+      model: "semantic-versioning",
+      supportedMajor: 1,
+      minorChanges: "additive-only",
+      patchChanges: "non-semantic-fixes-only",
+      unknownFields: "validate-against-bundled-schema",
+      breakingChanges: "new-major-required"
+    },
+    artifacts: [
+      {
+        name: "SHA256SUMS",
+        purpose: "checksums",
+        mediaType: "text/plain; charset=utf-8",
+        required: true,
+        schema: null
+      },
+      {
+        name: "changelog.json",
+        purpose: "release-diff",
+        mediaType: MEDIA_TYPES["changelog.json"],
+        required: true,
+        schema: null
+      },
+      {
+        name: "contract.json",
+        purpose: "contract",
+        mediaType: MEDIA_TYPES["contract.json"],
+        required: true,
+        schema: "contract.schema.json"
+      },
+      {
+        name: "contract.schema.json",
+        purpose: "contract-schema",
+        mediaType: MEDIA_TYPES["contract.schema.json"],
+        required: true,
+        schema: null
+      },
+      {
+        name: "manifest.json",
+        purpose: "release-manifest",
+        mediaType: "application/json",
+        required: true,
+        schema: "release-manifest.schema.json"
+      },
+      {
+        name: "release-manifest.schema.json",
+        purpose: "release-manifest-schema",
+        mediaType: MEDIA_TYPES["release-manifest.schema.json"],
+        required: true,
+        schema: null
+      },
+      {
+        name: "territories.csv",
+        purpose: "tabular-territories",
+        mediaType: MEDIA_TYPES["territories.csv"],
+        required: true,
+        schema: null
+      },
+      {
+        name: "territories.json",
+        purpose: "territory-payload",
+        mediaType: MEDIA_TYPES["territories.json"],
+        required: true,
+        schema: "territories.schema.json"
+      },
+      {
+        name: "territories.ndjson",
+        purpose: "streaming-territories",
+        mediaType: MEDIA_TYPES["territories.ndjson"],
+        required: true,
+        schema: "territory.schema.json"
+      },
+      {
+        name: "territories.schema.json",
+        purpose: "territory-payload-schema",
+        mediaType: MEDIA_TYPES["territories.schema.json"],
+        required: true,
+        schema: null
+      },
+      {
+        name: "territory-identifiers.csv",
+        purpose: "identifier-mapping",
+        mediaType: MEDIA_TYPES["territory-identifiers.csv"],
+        required: true,
+        schema: null
+      },
+      {
+        name: "territory.schema.json",
+        purpose: "territory-schema",
+        mediaType: MEDIA_TYPES["territory.schema.json"],
+        required: true,
+        schema: null
+      },
+      {
+        name: "validation-report.json",
+        purpose: "validation-report",
+        mediaType: MEDIA_TYPES["validation-report.json"],
+        required: true,
+        schema: null
+      }
+    ],
+    consumerReport: {
+      statusValues: ["accepted", "rejected"],
+      acceptedField: "accepted",
+      rejectedField: "rejected",
+      conflictsField: "conflicts",
+      activeReleaseField: "releaseId",
+      activeManifestSha256Field: "manifestSha256"
+    }
+  };
+}
+
 function artifactMetadata(name, bytes, baseUri) {
   return {
     name,
@@ -281,6 +497,7 @@ export function buildReleaseBundle({ candidate, validationReport, diff, metadata
   const candidateSha256 = canonicalSha256(candidate);
   const publicTerritories = {
     releaseId: metadata.releaseId,
+    contractVersion: PUBLIC_CONTRACT_VERSION,
     schemaVersion: candidate.schemaVersion,
     transformationVersion: candidate.transformationVersion,
     sourceSnapshotId: candidate.sourceSnapshotId,
@@ -288,6 +505,9 @@ export function buildReleaseBundle({ candidate, validationReport, diff, metadata
     candidateSha256,
     territories: candidate.territories
   };
+  if (!validators.territories(publicTerritories)) {
+    fail(`territories payload schema validation failed: ${schemaErrors(validators.territories)}`);
+  }
   const changelog = {
     releaseId: metadata.releaseId,
     previousReleaseId: metadata.previousReleaseId,
@@ -300,9 +520,20 @@ export function buildReleaseBundle({ candidate, validationReport, diff, metadata
     unchanged: diff.unchanged,
     ratios: diff.ratios ?? null
   };
+  const contract = publicContractDescriptor(candidate.schemaVersion);
+  if (!validators.contract(contract)) {
+    fail(`contract schema validation failed: ${schemaErrors(validators.contract)}`);
+  }
   const artifacts = new Map([
+    ["contract.json", Buffer.from(canonicalJsonPretty(contract), "utf8")],
+    ["contract.schema.json", Buffer.from(canonicalJsonPretty(contractSchema), "utf8")],
+    ["release-manifest.schema.json", Buffer.from(canonicalJsonPretty(manifestSchema), "utf8")],
     ["territories.json", Buffer.from(canonicalJsonPretty(publicTerritories), "utf8")],
+    ["territories.ndjson", Buffer.from(territoriesNdjson(candidate.territories), "utf8")],
+    ["territories.schema.json", Buffer.from(canonicalJsonPretty(territoriesSchema), "utf8")],
     ["territories.csv", Buffer.from(territoriesCsv(candidate.territories), "utf8")],
+    ["territory-identifiers.csv", Buffer.from(territoryIdentifiersCsv(candidate.territories), "utf8")],
+    ["territory.schema.json", Buffer.from(canonicalJsonPretty(territorySchema), "utf8")],
     ["validation-report.json", Buffer.from(canonicalJsonPretty(validationReport), "utf8")],
     ["changelog.json", Buffer.from(canonicalJsonPretty(changelog), "utf8")]
   ]);
@@ -313,6 +544,18 @@ export function buildReleaseBundle({ candidate, validationReport, diff, metadata
   const manifest = {
     releaseId: metadata.releaseId,
     releaseTag,
+    contract: {
+      name: PUBLIC_CONTRACT_NAME,
+      version: PUBLIC_CONTRACT_VERSION,
+      descriptorArtifact: "contract.json",
+      compatibility: "semver-major",
+      schemas: {
+        contract: "contract.schema.json",
+        manifest: "release-manifest.schema.json",
+        territories: "territories.schema.json",
+        territory: "territory.schema.json"
+      }
+    },
     schemaVersion: candidate.schemaVersion,
     transformationVersion: candidate.transformationVersion,
     publishedAt: metadata.publishedAt,
@@ -370,26 +613,72 @@ export function buildReleaseBundle({ candidate, validationReport, diff, metadata
   };
 }
 
+function jsonArtifact(bundle, name) {
+  const bytes = bundle.artifacts.get(name);
+  if (!bytes) fail(`release bundle lacks ${name}`);
+  try {
+    return JSON.parse(bytes.toString("utf8"));
+  } catch {
+    fail(`${name} is not valid JSON`);
+  }
+}
+
+function createBundledValidators(bundle) {
+  const bundledSchemas = {
+    contract: jsonArtifact(bundle, "contract.schema.json"),
+    manifest: jsonArtifact(bundle, "release-manifest.schema.json"),
+    territories: jsonArtifact(bundle, "territories.schema.json"),
+    territory: jsonArtifact(bundle, "territory.schema.json")
+  };
+  const ajv = new Ajv2020({ allErrors: true, strict: true });
+  addFormats(ajv);
+  try {
+    ajv.addSchema(bundledSchemas.territory);
+    return {
+      contract: ajv.compile(bundledSchemas.contract),
+      manifest: ajv.compile(bundledSchemas.manifest),
+      territories: ajv.compile(bundledSchemas.territories),
+      territory: ajv.getSchema(bundledSchemas.territory.$id)
+    };
+  } catch (error) {
+    fail(`bundled JSON Schemas could not be compiled: ${error.message}`);
+  }
+}
+
+export function assertPublicContractCompatibility(contract, manifest = null) {
+  if (!contract || contract.name !== PUBLIC_CONTRACT_NAME) {
+    fail(`unsupported public contract: ${contract?.name ?? "missing"}`);
+  }
+  if (majorVersion(contract.contractVersion, "contractVersion") !== 1) {
+    fail(`unsupported public contract major: ${contract.contractVersion}`);
+  }
+  if (majorVersion(contract.schemaVersion, "schemaVersion") !== 1) {
+    fail(`unsupported territory schema major: ${contract.schemaVersion}`);
+  }
+  if (
+    contract.compatibility?.model !== "semantic-versioning" ||
+    contract.compatibility?.supportedMajor !== 1 ||
+    contract.compatibility?.breakingChanges !== "new-major-required"
+  ) {
+    fail("public contract compatibility policy is incomplete");
+  }
+  if (manifest) {
+    if (
+      manifest.contract?.name !== contract.name ||
+      manifest.contract?.version !== contract.contractVersion ||
+      manifest.schemaVersion !== contract.schemaVersion
+    ) {
+      fail("manifest and public contract versions differ");
+    }
+  }
+}
+
 export function verifyReleaseBundle(bundle) {
+  if (!(bundle?.artifacts instanceof Map)) fail("release bundle artifacts must be a Map");
   const manifestBytes = bundle.artifacts.get("manifest.json");
   const checksumsBytes = bundle.artifacts.get("SHA256SUMS");
   if (!manifestBytes || !checksumsBytes) fail("release bundle lacks manifest.json or SHA256SUMS");
-  const manifest = JSON.parse(manifestBytes.toString("utf8"));
-  if (!validators.manifest(manifest)) fail(`manifest schema validation failed: ${schemaErrors(validators.manifest)}`);
-  if (manifest.sourceSnapshots.length !== 1) fail("SIRUTA releases must reference exactly one source snapshot");
-  if (manifest.approval.candidateSha256 !== manifest.candidateSha256) {
-    fail("manifest approval and candidate hashes differ");
-  }
-  const artifactNames = manifest.artifacts.map((item) => item.name);
-  if (new Set(artifactNames).size !== artifactNames.length) fail("manifest artifact names must be unique");
-  for (const artifact of manifest.artifacts) {
-    const uri = new URL(artifact.uri);
-    if (
-      uri.protocol !== "https:" ||
-      uri.hostname !== "github.com" ||
-      !uri.pathname.endsWith(`/releases/download/${manifest.releaseTag}/${artifact.name}`)
-    ) fail(`manifest artifact URI is not content-addressable by release tag: ${artifact.name}`);
-  }
+
   const expected = new Map();
   for (const line of checksumsBytes.toString("utf8").trimEnd().split("\n")) {
     const match = line.match(/^([0-9a-f]{64})  ([A-Za-z0-9._-]+)$/);
@@ -405,24 +694,95 @@ export function verifyReleaseBundle(bundle) {
     const bytes = bundle.artifacts.get(name);
     if (!bytes || sha256(bytes) !== hash) fail(`artifact checksum mismatch: ${name}`);
   }
+
+  const manifest = jsonArtifact(bundle, "manifest.json");
+  const contract = jsonArtifact(bundle, "contract.json");
+  const payload = jsonArtifact(bundle, "territories.json");
+  const bundledValidators = createBundledValidators(bundle);
+  if (!bundledValidators.contract(contract)) {
+    fail(`contract schema validation failed: ${schemaErrors(bundledValidators.contract)}`);
+  }
+  if (!bundledValidators.manifest(manifest)) {
+    fail(`manifest schema validation failed: ${schemaErrors(bundledValidators.manifest)}`);
+  }
+  if (!bundledValidators.territories(payload)) {
+    fail(`territories payload schema validation failed: ${schemaErrors(bundledValidators.territories)}`);
+  }
+  assertPublicContractCompatibility(contract, manifest);
+
+  const contractFiles = contract.artifacts.map((artifact) => artifact.name);
+  if (
+    new Set(contractFiles).size !== contractFiles.length ||
+    JSON.stringify([...contractFiles].sort()) !== JSON.stringify([...bundle.artifacts.keys()].sort())
+  ) {
+    fail("contract descriptor does not cover the exact bundle file set");
+  }
+  if (manifest.sourceSnapshots.length !== 1) fail("SIRUTA releases must reference exactly one source snapshot");
+  if (manifest.approval.candidateSha256 !== manifest.candidateSha256) {
+    fail("manifest approval and candidate hashes differ");
+  }
+  const artifactNames = manifest.artifacts.map((item) => item.name);
+  if (new Set(artifactNames).size !== artifactNames.length) fail("manifest artifact names must be unique");
+  const expectedManifestArtifacts = [...bundle.artifacts.keys()]
+    .filter((name) => !new Set(["manifest.json", "SHA256SUMS"]).has(name))
+    .sort();
+  if (JSON.stringify([...artifactNames].sort()) !== JSON.stringify(expectedManifestArtifacts)) {
+    fail("manifest does not cover the exact non-circular artifact set");
+  }
+  for (const artifact of manifest.artifacts) {
+    const uri = new URL(artifact.uri);
+    if (
+      uri.protocol !== "https:" ||
+      uri.hostname !== "github.com" ||
+      !uri.pathname.endsWith(`/releases/download/${manifest.releaseTag}/${artifact.name}`)
+    ) fail(`manifest artifact URI is not content-addressable by release tag: ${artifact.name}`);
+  }
   for (const artifact of manifest.artifacts) {
     const bytes = bundle.artifacts.get(artifact.name);
     if (!bytes || bytes.length !== artifact.sizeBytes || sha256(bytes) !== artifact.sha256) {
       fail(`manifest artifact mismatch: ${artifact.name}`);
     }
   }
+  if (
+    payload.releaseId !== manifest.releaseId ||
+    payload.contractVersion !== manifest.contract.version ||
+    payload.schemaVersion !== manifest.schemaVersion ||
+    payload.transformationVersion !== manifest.transformationVersion ||
+    payload.sourceSnapshotId !== manifest.sourceSnapshots[0].snapshotId ||
+    payload.sourceSha256 !== manifest.sourceSnapshots[0].sha256 ||
+    payload.candidateSha256 !== manifest.candidateSha256 ||
+    payload.territories.length !== manifest.counts.territories
+  ) {
+    fail("territories.json metadata does not match the manifest");
+  }
   const candidate = {
     schemaVersion: manifest.schemaVersion,
     transformationVersion: manifest.transformationVersion,
     sourceSnapshotId: manifest.sourceSnapshots[0].snapshotId,
     sourceSha256: manifest.sourceSnapshots[0].sha256,
-    territories: JSON.parse(bundle.artifacts.get("territories.json").toString("utf8")).territories
+    territories: payload.territories
   };
-  validateCandidate(candidate);
+  validateCandidate(candidate, {
+    requireExactSchemaVersion: false,
+    validateLocalTerritorySchema: false
+  });
   if (canonicalSha256(candidate) !== manifest.candidateSha256) {
     fail("territories.json does not reconstruct the approved candidate hash");
   }
-  return { manifest, manifestSha256: sha256(manifestBytes) };
+  const expectedNdjson = Buffer.from(territoriesNdjson(payload.territories), "utf8");
+  if (!bundle.artifacts.get("territories.ndjson")?.equals(expectedNdjson)) {
+    fail("territories.ndjson differs from territories.json");
+  }
+  const expectedIdentifiers = Buffer.from(territoryIdentifiersCsv(payload.territories), "utf8");
+  if (!bundle.artifacts.get("territory-identifiers.csv")?.equals(expectedIdentifiers)) {
+    fail("territory-identifiers.csv differs from territories.json");
+  }
+  return {
+    manifest,
+    manifestSha256: sha256(manifestBytes),
+    contract,
+    payload
+  };
 }
 
 export { DATA_LICENSE };

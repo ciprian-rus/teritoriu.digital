@@ -79,7 +79,7 @@ Registrul de adresare prevăzut de propunerea legislativă este un context disti
     └── tests/               # teste pgTAP
 ```
 
-Interfața publică și API-ul vor fi adăugate incremental, după stabilizarea contractului de date. Planul de control Supabase este dedicat și versionat prin migrații; nu există încă un release public de date sau un site public.
+Interfața publică și API-ul vor fi adăugate incremental. Primul release SIRUTA stabil este public, iar contractul public v1 pentru consumatori este implementat în repository și urmează să fie inclus într-un release nou, fără modificarea release-ului existent. Planul de control Supabase este dedicat și versionat prin migrații.
 
 ## Verificare locală
 
@@ -88,6 +88,7 @@ Cerințe: Node.js 24 și, pentru testele bazei de date, Supabase CLI plus Docker
 ```bash
 npm ci
 npm test
+npm run contract:verify -- --bundle-dir /cale/catre/bundle --release-id ID --manifest-sha256 SHA256
 supabase db start
 supabase test db
 supabase db lint --level warning
@@ -98,6 +99,7 @@ supabase db lint --level warning
 - [Arhitectura sistemului](docs/architecture/system.md)
 - [Alinierea cu propunerea legislativă](docs/law-alignment.md)
 - [Contractul canonic de date](docs/data-contract.md)
+- [Contractul public v1 pentru consumatori](docs/public-contract-v1.md)
 - [Registrul inițial al surselor](docs/source-registry.md)
 - [Roadmap](docs/roadmap.md)
 - [Roluri și promovarea release-urilor](docs/governance/roles-and-promotion.md)
@@ -108,4 +110,4 @@ supabase db lint --level warning
 
 ## Stare
 
-Proiectul finalizează **M0**, are implementate tehnic M1 și M2 și construiește **M3 — primul release reproductibil**. Închiderea M1/M2 cere încă dry-run-ul, publicarea idempotentă și stagingul live pe snapshotul oficial; schema internă rămâne neexpusă public.
+M1–M3 sunt demonstrate pe snapshotul oficial și pe release-ul public `2026.07.23.2`. Următoarea poartă este **M8 — contractul public v1 și primul consumator Inventar.digital**. Schema internă rămâne neexpusă public.

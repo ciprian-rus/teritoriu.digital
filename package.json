@@ -10,6 +10,7 @@
     "check": "node scripts/validate-foundation.mjs",
     "test:unit": "node --test",
     "test": "npm run check && npm run test:unit",
+    "contract:verify": "node scripts/verify-release-bundle.mjs",
     "acquire:siruta": "node scripts/acquire-siruta.mjs",
     "fetch:siruta": "node scripts/fetch-siruta-snapshot.mjs",
     "candidate:siruta": "node scripts/build-siruta-candidate.mjs",

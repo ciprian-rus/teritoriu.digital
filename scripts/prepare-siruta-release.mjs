@@ -7,7 +7,10 @@ import { safeErrorMessage } from "../packages/pipeline/src/acquisition/errors.mj
 import { buildSirutaCandidate } from "../packages/pipeline/src/canonical/build-candidate.mjs";
 import { fetchSnapshotForCanonicalization } from "../packages/pipeline/src/canonical/fetch-snapshot.mjs";
 import { loadSirutaIdentityIndex } from "../packages/pipeline/src/canonical/postgres-staging.mjs";
-import { buildReleaseBundle } from "../packages/pipeline/src/release/artifact-builder.mjs";
+import {
+  buildReleaseBundle,
+  unchangedReleaseDiff
+} from "../packages/pipeline/src/release/artifact-builder.mjs";
 import { writeReleaseBundle } from "../packages/pipeline/src/release/bundle-files.mjs";
 import { loadApprovedSirutaContext } from "../packages/pipeline/src/release/postgres-release.mjs";
 
@@ -59,9 +62,24 @@ try {
   if (context.pipelineCommit !== args.pipelineCommit) {
     throw new Error("The requested pipeline commit differs from the approved canonicalization run");
   }
-  const stable = await client.query("select release_id from registry.release_channels where channel = 'stable'");
-  if (stable.rows.length > 0) {
-    throw new Error("M3 prepares the first stable release only; subsequent historical releases require M7");
+  const stable = await client.query(
+    `select
+       channel.release_id,
+       approval.candidate_sha256::text
+     from registry.release_channels channel
+     join registry.releases release using (release_id)
+     join registry.release_candidate_approvals approval using (import_run_id)
+     where channel.channel = 'stable'
+       and release.status = 'published'`
+  );
+  const previousRelease = stable.rows[0] ?? null;
+  if (
+    previousRelease &&
+    previousRelease.candidate_sha256 !== context.candidateSha256
+  ) {
+    throw new Error(
+      "This workflow permits a follow-up contract release only when the approved candidate is byte-identical to stable"
+    );
   }
   const snapshot = await fetchSnapshotForCanonicalization(context.snapshotId, context.source.sha256, {
     databaseClient: client,
@@ -88,11 +106,11 @@ try {
   const bundle = buildReleaseBundle({
     candidate: result.candidate,
     validationReport,
-    diff: result.diff,
+    diff: previousRelease ? unchangedReleaseDiff(result.candidate.territories) : result.diff,
     metadata: {
       releaseId: args.releaseId,
       publishedAt: args.publishedAt,
-      previousReleaseId: null,
+      previousReleaseId: previousRelease?.release_id ?? null,
       pipelineCommit: args.pipelineCommit,
       repository: args.repository,
       approval: context.approval,

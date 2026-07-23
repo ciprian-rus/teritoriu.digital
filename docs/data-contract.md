@@ -49,3 +49,5 @@ O geometrie derivată, precum conturul municipiului București obținut prin uni
 Schema SQL este normalizată pentru administrare și audit. Contractul public este o proiecție stabilă, definită prin JSON Schema, care include doar date promovate. Câmpurile operaționale, sesizările, actorii și notele de review nu ajung automat în release.
 
 Orice câmp public indică release-ul și proveniența. Câmpurile noi compatibile schimbă versiunea minoră a schemei; eliminarea sau schimbarea semanticii unui câmp schimbă versiunea majoră.
+
+Contractul public SIRUTA v1, activele obligatorii, politica de compatibilitate și algoritmul consumatorului sunt definite în [Contractul public v1](public-contract-v1.md). `contractVersion` este separat de versiunea schemei teritoriale și de versiunea transformării.

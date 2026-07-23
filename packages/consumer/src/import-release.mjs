@@ -1,15 +1,11 @@
-import { verifyReleaseBundle } from "../../pipeline/src/release/artifact-builder.mjs";
+import { verifyConsumerRelease } from "./verify-release.mjs";
 
 function sirutaIdentifier(territory) {
   return territory.identifiers.find((item) => item.scheme === "ro.ins.siruta")?.value ?? null;
 }
 
-export function importReleaseReadModel(bundle, currentModel = null) {
-  const { manifest, manifestSha256 } = verifyReleaseBundle(bundle);
-  const payload = JSON.parse(bundle.artifacts.get("territories.json").toString("utf8"));
-  if (payload.releaseId !== manifest.releaseId || payload.territories.length !== manifest.counts.territories) {
-    throw new Error("Release payload metadata does not match its manifest");
-  }
+export function importReleaseReadModel(bundle, currentModel = null, options = {}) {
+  const { manifest, manifestSha256, payload, report } = verifyConsumerRelease(bundle, options);
 
   const byTerritoryId = new Map();
   const bySiruta = new Map();
@@ -37,8 +33,18 @@ export function importReleaseReadModel(bundle, currentModel = null) {
     territories: payload.territories,
     byTerritoryId,
     bySiruta,
+    report,
     rollback: currentModel
       ? { releaseId: currentModel.releaseId, manifestSha256: currentModel.manifestSha256 }
       : null
+  };
+}
+
+export function activeReleaseMetadata(model) {
+  if (!model) return null;
+  return {
+    releaseId: model.releaseId,
+    manifestSha256: model.manifestSha256,
+    importedAt: model.importedAt
   };
 }
