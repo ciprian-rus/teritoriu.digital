@@ -19,6 +19,7 @@ const requiredFiles = [
   ".github/workflows/approve-siruta-candidate.yml",
   ".github/workflows/canonicalize-siruta.yml",
   ".github/workflows/move-stable-release.yml",
+  ".github/workflows/mirror-siruta.yml",
   ".github/workflows/publish-siruta-release.yml",
   ".github/workflows/verify-production-registry.yml",
   "config/sources/siruta-2025.json",
@@ -247,6 +248,13 @@ if (
 ) {
   errors.push("SIRUTA observed snapshot size must fit the approved acquisition boundary");
 }
+if (
+  !/^bootstrap\/[a-z0-9]+(?:[._-][a-z0-9]+)*\.xlsx$/.test(
+    sirutaSource.bootstrapStorageObject ?? ""
+  )
+) {
+  errors.push("SIRUTA bootstrap storage object must be a safe XLSX path under bootstrap/");
+}
 const serializedSource = JSON.stringify(sirutaSource);
 if (/service_role|sb_secret_|postgres(?:ql)?:\/\//i.test(serializedSource)) {
   errors.push("source configuration must not contain database URLs or privileged keys");
@@ -313,6 +321,23 @@ if (
 }
 if (packageLock.packages?.[""]?.dependencies?.["read-excel-file"] !== "9.3.4") {
   errors.push("package-lock root must pin read-excel-file 9.3.4");
+}
+
+const mirrorWorkflow = await load(".github/workflows/mirror-siruta.yml");
+if (!mirrorWorkflow.includes("workflow_dispatch: {}") || mirrorWorkflow.includes("inputs:")) {
+  errors.push("SIRUTA mirror manual dispatch must not require operator inputs");
+}
+for (const invariant of [
+  "github.event_name == 'schedule'",
+  "--publish --direct-resource",
+  "github.event_name == 'workflow_dispatch'",
+  "--publish --configured-storage-bootstrap",
+  "environment: production",
+  "github.ref == 'refs/heads/main'"
+]) {
+  if (!mirrorWorkflow.includes(invariant)) {
+    errors.push(`SIRUTA mirror workflow invariant missing: ${invariant}`);
+  }
 }
 
 const acquireWorkflow = await load(".github/workflows/acquire-siruta.yml");

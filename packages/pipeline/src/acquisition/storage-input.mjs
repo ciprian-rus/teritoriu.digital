@@ -42,6 +42,17 @@ function validateProvenance(value, source) {
   return url.href;
 }
 
+export function resolveConfiguredStorageBootstrap(source) {
+  return {
+    objectPath: source.bootstrapStorageObject,
+    expected: {
+      sha256: source.observedSnapshot?.sha256,
+      sizeBytes: source.observedSnapshot?.sizeBytes,
+      provenanceUrl: source.resourceUrl
+    }
+  };
+}
+
 export async function loadStorageBootstrap(objectPath, source, expected, options = {}) {
   if (!BOOTSTRAP_OBJECT.test(objectPath ?? "")) {
     throw new AcquisitionError(

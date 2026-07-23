@@ -3,7 +3,10 @@ import { readFile } from "node:fs/promises";
 import { acquireSource } from "../packages/pipeline/src/acquisition/acquire.mjs";
 import { safeErrorMessage } from "../packages/pipeline/src/acquisition/errors.mjs";
 import { loadManualSnapshot } from "../packages/pipeline/src/acquisition/manual-input.mjs";
-import { loadStorageBootstrap } from "../packages/pipeline/src/acquisition/storage-input.mjs";
+import {
+  loadStorageBootstrap,
+  resolveConfiguredStorageBootstrap
+} from "../packages/pipeline/src/acquisition/storage-input.mjs";
 import { validateSirutaSnapshot } from "../packages/pipeline/src/canonical/build-candidate.mjs";
 
 const SOURCE_FILE = new URL("../config/sources/siruta-2025.json", import.meta.url);
@@ -15,12 +18,14 @@ function usage() {
   npm run acquire:siruta -- --archive-dir <path> [--expected-sha256 <sha>]
   npm run acquire:siruta -- --publish [--expected-sha256 <sha>]
   npm run acquire:siruta -- --publish --direct-resource
+  npm run acquire:siruta -- --publish --configured-storage-bootstrap
   npm run acquire:siruta -- --manual-file <path> --expected-sha256 <sha> --expected-size <bytes> --provenance-url <url> --publish
   npm run acquire:siruta -- --storage-object <path> --expected-sha256 <sha> --expected-size <bytes> --provenance-url <url> --publish
 
 --direct-resource downloads the allowlisted official resource URL without CKAN discovery.
 --storage-object loads a pre-positioned object from the private source-snapshots/bootstrap prefix.
-It is intended for the scheduled source mirror; all integrity and canonical validation gates remain active.
+--configured-storage-bootstrap resolves the private object, checksum, size and provenance from the versioned source configuration.
+Both storage modes keep all integrity and canonical validation gates active.
 
 Publish mode requires SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and SUPABASE_DB_URL.`;
 }
@@ -32,6 +37,7 @@ function parseArguments(args) {
     if (argument === "--dry-run") result.dryRun = true;
     else if (argument === "--publish") result.publish = true;
     else if (argument === "--direct-resource") result.directResource = true;
+    else if (argument === "--configured-storage-bootstrap") result.configuredStorageBootstrap = true;
     else if (argument === "--archive-dir") result.localArchiveDirectory = args[++index];
     else if (argument === "--expected-sha256") result.expectedSha256 = args[++index];
     else if (argument === "--expected-size") result.expectedSize = Number(args[++index]);
@@ -50,12 +56,20 @@ function parseArguments(args) {
   if (result.expectedSha256 && !/^[0-9a-f]{64}$/.test(result.expectedSha256)) {
     throw new Error("--expected-sha256 must contain 64 lowercase hexadecimal characters");
   }
-  const suppliedChannels = [result.directResource, Boolean(result.manualFile), Boolean(result.storageObject)].filter(Boolean);
+  const suppliedChannels = [
+    result.directResource,
+    Boolean(result.manualFile),
+    Boolean(result.storageObject),
+    result.configuredStorageBootstrap
+  ].filter(Boolean);
   if (suppliedChannels.length > 1) {
     throw new Error("--direct-resource, --manual-file and --storage-object are mutually exclusive");
   }
   if (result.directResource && !result.publish && !result.dryRun) {
     throw new Error("--direct-resource requires --publish or --dry-run");
+  }
+  if (result.configuredStorageBootstrap && !result.publish) {
+    throw new Error("--configured-storage-bootstrap requires --publish");
   }
   for (const channel of [
     { enabled: Boolean(result.manualFile), flag: "--manual-file" },
@@ -122,10 +136,19 @@ try {
   }
   const source = JSON.parse(await readFile(SOURCE_FILE, "utf8"));
   const transformation = JSON.parse(await readFile(TRANSFORM_FILE, "utf8"));
+  const configuredBootstrap = args.configuredStorageBootstrap
+    ? resolveConfiguredStorageBootstrap(source)
+    : null;
+  const storageObject = args.storageObject ?? configuredBootstrap?.objectPath;
+  const expectedInput = configuredBootstrap?.expected ?? {
+    sha256: args.expectedSha256,
+    sizeBytes: args.expectedSize,
+    provenanceUrl: args.provenanceUrl
+  };
   const options = {
     dryRun: args.dryRun,
     localArchiveDirectory: args.localArchiveDirectory,
-    expectedSha256: args.expectedSha256,
+    expectedSha256: expectedInput.sha256,
     skipDiscovery: args.directResource,
     snapshotValidator: (bytes) => validateSirutaSnapshot(bytes, transformation)
   };
@@ -134,16 +157,11 @@ try {
     options.serviceRoleKey = requireEnvironment("SUPABASE_SERVICE_ROLE_KEY");
     options.databaseUrl = requireEnvironment("SUPABASE_DB_URL");
   }
-  const expectedInput = {
-    sha256: args.expectedSha256,
-    sizeBytes: args.expectedSize,
-    provenanceUrl: args.provenanceUrl
-  };
   if (args.manualFile) {
     options.providedDownload = await loadManualSnapshot(args.manualFile, source, expectedInput);
-  } else if (args.storageObject) {
+  } else if (storageObject) {
     options.providedDownload = await loadStorageBootstrap(
-      args.storageObject,
+      storageObject,
       source,
       expectedInput,
       {
@@ -167,7 +185,7 @@ try {
         mode: result.mode,
         acquisitionChannel: args.manualFile
           ? "manual-bootstrap"
-          : args.storageObject
+          : storageObject
             ? "private-storage-bootstrap"
             : args.directResource
               ? "official-direct-mirror"

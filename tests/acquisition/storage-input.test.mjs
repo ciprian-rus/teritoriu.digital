@@ -2,7 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 
-import { loadStorageBootstrap } from "../../packages/pipeline/src/acquisition/storage-input.mjs";
+import {
+  loadStorageBootstrap,
+  resolveConfiguredStorageBootstrap
+} from "../../packages/pipeline/src/acquisition/storage-input.mjs";
 
 const bytes = Buffer.concat([
   Buffer.from([0x50, 0x4b, 0x03, 0x04]),
@@ -39,6 +42,22 @@ const expected = {
   sizeBytes: bytes.length,
   provenanceUrl: "https://data.gov.ro/dataset/siruta_an-2025"
 };
+
+test("resolves the operator-free bootstrap from versioned source configuration", () => {
+  const configured = resolveConfiguredStorageBootstrap({
+    ...source,
+    resourceUrl: expected.provenanceUrl,
+    bootstrapStorageObject: "bootstrap/siruta-2025.xlsx",
+    observedSnapshot: {
+      sha256: expected.sha256,
+      sizeBytes: expected.sizeBytes
+    }
+  });
+  assert.deepEqual(configured, {
+    objectPath: "bootstrap/siruta-2025.xlsx",
+    expected
+  });
+});
 
 test("loads an exact verified bootstrap object from the private bucket", async () => {
   const result = await loadStorageBootstrap(

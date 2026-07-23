@@ -13,6 +13,7 @@
   "ckanPackageId": "siruta_an-2025",
   "resourceUrl": "https://data.gov.ro/dataset/06950cb3-41b7-48b8-91bb-4a329786d178/resource/2a9be5d1-f74f-40f1-b549-b6c6cfcda968/download/siruta_an_2025.csv",
   "resourceId": "2a9be5d1-f74f-40f1-b549-b6c6cfcda968",
+  "bootstrapStorageObject": "bootstrap/siruta_an_2025.xlsx",
   "allowedHosts": ["data.gov.ro"],
   "allowedProtocols": ["https:"],
   "allowedPorts": [443],
