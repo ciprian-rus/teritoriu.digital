@@ -94,6 +94,12 @@ supabase test db
 supabase db lint --level warning
 ```
 
+## Licență
+
+Codul acestui repository (`packages/`, `scripts/`, `supabase/migrations`, teste) este licențiat sub [AGPL-3.0-only](LICENSE): o modificare rulată ca serviciu public trebuie să-și publice sursa.
+
+Datele publicate în fiecare release (`territories.json`, `territories.csv`, NDJSON etc.) rămân sub licența sursei oficiale SIRUTA, **CC BY 4.0**, cu atribuire către INS/data.gov.ro. Aceasta nu este o decizie separată: fiecare `manifest.json` declară fail-closed `license.spdx = "CC-BY-4.0"`, iar `scripts/validate-foundation.mjs` respinge orice schimbare a acestei clauze din contract (`schemas/release-manifest.schema.json`).
+
 ## Documentație
 
 - [Arhitectura sistemului](docs/architecture/system.md)
