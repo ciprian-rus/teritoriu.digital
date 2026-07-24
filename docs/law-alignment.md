@@ -41,5 +41,18 @@ Această delimitare evită extinderea prematură a MVP-ului la milioane de adres
 5. Granularitatea publicării datelor de adresă și garanțiile concrete de protecție a datelor.
 6. Autoritatea care aprobă o corecție și mecanismul de contestare a soluției.
 
+## Proprietari instituționali propuși și opțiuni de soluție
+
+Tabelul de mai jos propune, pentru fiecare neclaritate de mai sus, un posibil proprietar instituțional și opțiuni de soluție cu compromisurile lor. **Nu este o poziție juridică definitivă** — sunt puncte de plecare pentru o discuție instituțională reală, care necesită validare de specialiști juridici și de instituțiile menționate înainte de a fi adoptate.
+
+| # | Neclaritate | Proprietar instituțional propus | Opțiuni de soluție |
+|---|---|---|---|
+| 1 | Administrator registru teritorial | Guvernul României / MDLPA, eventual în comun cu INS | (a) desemnare explicită prin act normativ a unei instituții existente (ex. INS, ca extensie a rolului SIRUTA); (b) structură interinstituțională (INS + ANCPI + MDLPA) cu roluri separate explicit; (c) Teritoriu.digital rămâne implementare de referință neoficială până la desemnare — risc: ambiguitate prelungită |
+| 2 | Raportul cu RENNS | ANCPI (administrator RENNS) + autoritatea registrului de adresare | (a) registrul de adresare devine strat suplimentar peste RENNS, ANCPI administrator unic, Teritoriu.digital furnizează doar `territory_id`; (b) registre distincte dar interoperabile prin contract public (arhitectura curentă); (c) migrare RENNS către noua bază legală, cu ANCPI păstrând rolul tehnic |
+| 3 | Guvernanța identificatorului oficial unic | Administratorul de la #1, cu aviz INS pentru continuitate statistică | (a) identificator persistent unic, alocat o singură dată, indiferent de reorganizări — ce implementează deja `territory_id` UUIDv7; (b) realocare la reorganizări majore, cu tabel de corespondență istoric — mai aproape de practica SIRUTA actuală; (c) model hibrid: identificator tehnic persistent + cod oficial mutabil, mapate explicit (starea curentă) |
+| 4 | Ierarhia probatorie a surselor | Comisie mixtă INS–ANCPI–MDLPA sau administratorul de la #1 | (a) actul juridic de organizare teritorială primează întotdeauna; (b) fiecare sursă rămâne autoritativă în domeniul propriu (INS: cod, ANCPI: geometrie, act juridic: statut/nume), discrepanțele devin findings auditabile — modelul curent; (c) prioritate contextuală documentată explicit per câmp |
+| 5 | Granularitate adrese și protecția datelor | ANCPI/autoritatea registrului de adresare + ANSPDCP pentru avizare | (a) publicare completă ca date administrative deschise, fără atribute personale; (b) agregare la nivel de stradă/localitate, numere administrative doar prin API controlat pentru instituții; (c) consultare ANSPDCP înainte de MVP-ul registrului de adresare |
+| 6 | Aprobare corecție și contestare | Administratorul de la #1, cu escaladare către instituția sursă (INS/ANCPI) | (a) corecții tehnice aprobate de custodele tehnic, fără contestare — deja implementat în `docs/governance/roles-and-promotion.md`; (b) corecții de fond necesită aviz al instituției sursă înainte de promovare, contestabile direct la acea instituție; (c) sesizare publică internă (deja documentată) + escaladare instituțională explicită peste pragul unei normalizări tehnice |
+
 Până la aceste clarificări, produsul va eticheta distinct valoarea sursă, normalizarea derivată, decizia tehnică și orice element care necesită confirmare oficială.
 
