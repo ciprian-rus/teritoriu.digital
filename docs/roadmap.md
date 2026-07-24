@@ -2,7 +2,7 @@
 
 | Milestone | Rezultat verificabil | Stare |
 |---|---|---|
-| M0 — Fundație | ADR-uri, contract inițial, schemă Supabase, CI și guvernanță | în lucru — tehnic validat; rămân licența și branch protection |
+| M0 — Fundație | ADR-uri, contract inițial, schemă Supabase, CI și guvernanță | finalizat — LICENSE (AGPL-3.0-only, #33), branch protection pe `main` și aprobarea ADR-urilor 0001-0003 confirmate de owner (#2) |
 | M1 — Surse | registru de surse și downloader controlat, reluabil | finalizat pe snapshotul oficial |
 | M2 — Model | parser, reconciliere UUIDv7 și validări canonice | finalizat; 16.978 identități promovate |
 | M3 — Primul release | snapshot SIRUTA verificat, JSON/CSV, manifest, SHA-256 și diff | finalizat prin release-ul public `2026.07.23.2` și drill-ul izolat; `stable` curent este `2026.07.23.3` (contract v1, #8) |
