@@ -5,12 +5,12 @@
 | M0 — Fundație | ADR-uri, contract inițial, schemă Supabase, CI și guvernanță | în lucru — tehnic validat; rămân licența și branch protection |
 | M1 — Surse | registru de surse și downloader controlat, reluabil | finalizat pe snapshotul oficial |
 | M2 — Model | parser, reconciliere UUIDv7 și validări canonice | finalizat; 16.978 identități promovate |
-| M3 — Primul release | snapshot SIRUTA verificat, JSON/CSV, manifest, SHA-256 și diff | finalizat prin release-ul public `2026.07.23.2` și drill-ul izolat |
+| M3 — Primul release | snapshot SIRUTA verificat, JSON/CSV, manifest, SHA-256 și diff | finalizat prin release-ul public `2026.07.23.2` și drill-ul izolat; `stable` curent este `2026.07.23.3` (contract v1, #8) |
 | M4 — Site | căutare și navigare ierarhică accesibilă | planificat |
 | M5 — API | `/api/v1`, OpenAPI, ETag, paginare și teste de contract | planificat |
 | M6 — Geometrii | ANCPI, validare PostGIS, GeoJSON/TopoJSON și hărți | planificat |
 | M7 — Istoric | revizii, predecesori/succesori și comparații temporale | planificat |
-| M8 — Inventar | contract v1, import controlat și rollback demonstrat | în lucru — contractul producătorului este implementat; urmează release nou și rolloutul consumatorului |
+| M8 — Inventar | contract v1, import controlat și rollback demonstrat | în lucru — contractul producătorului (#8) și release-ul `2026.07.23.3` sunt publicate; consumatorul (#14) are un PR de import în draft ([inventar-digital-stat#122](https://github.com/ciprian-rus/inventar-digital-stat/pull/122)), fără persistență/activare/rollback încă |
 | M9 — Deliberativ | contract teritorial și hărți UAT | planificat |
 | M10 — Alte aplicații | Transparenta și Examene pe același `territory_id` | planificat |
 | M11 — Hardening | observabilitate, backup/restore, incidente și SLA | planificat |

@@ -94,6 +94,12 @@ supabase test db
 supabase db lint --level warning
 ```
 
+## Licență
+
+Codul acestui repository (`packages/`, `scripts/`, `supabase/migrations`, teste) este licențiat sub [AGPL-3.0-only](LICENSE): o modificare rulată ca serviciu public trebuie să-și publice sursa.
+
+Datele publicate în fiecare release (`territories.json`, `territories.csv`, NDJSON etc.) rămân sub licența sursei oficiale SIRUTA, **CC BY 4.0**, cu atribuire către INS/data.gov.ro. Aceasta nu este o decizie separată: fiecare `manifest.json` declară fail-closed `license.spdx = "CC-BY-4.0"`, iar `scripts/validate-foundation.mjs` respinge orice schimbare a acestei clauze din contract (`schemas/release-manifest.schema.json`).
+
 ## Documentație
 
 - [Arhitectura sistemului](docs/architecture/system.md)
@@ -110,4 +116,4 @@ supabase db lint --level warning
 
 ## Stare
 
-M1–M3 sunt demonstrate pe snapshotul oficial și pe release-ul public `2026.07.23.2`. Următoarea poartă este **M8 — contractul public v1 și primul consumator Inventar.digital**. Schema internă rămâne neexpusă public.
+M1–M3 sunt demonstrate pe snapshotul oficial și pe release-ul public [`2026.07.23.3`](https://github.com/ciprian-rus/teritoriu.digital/releases/tag/siruta-2026.07.23.3), care publică și contractul public v1 (`1.0.0`, 13 artefacte, `stable` curent; `.2` rămâne disponibil pentru rollback). Contractul producător este închis (#8). Următoarea poartă este **M8 — primul consumator Inventar.digital**: un PR de import în draft există ([inventar-digital-stat#122](https://github.com/ciprian-rus/inventar-digital-stat/pull/122)), fără persistență, activare sau scriere Supabase încă. Schema internă rămâne neexpusă public.
