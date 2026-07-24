@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "Registrul teritorial deschis al României",
+  "license": "AGPL-3.0-only",
   "engines": {
     "node": ">=24 <25"
   },
