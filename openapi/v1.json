@@ -1,0 +1,160 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Teritoriu.digital API",
+    "version": "1.0.0",
+    "description": "API public, versionat, construit exclusiv peste release-uri promovate. Fiecare răspuns provine dintr-un bundle verificat fail-closed (contract public v1); indisponibilitatea Supabase sau a surselor oficiale nu afectează răspunsurile. Nu există încă un domeniu de producție — acest document descrie contractul, nu un deployment live.",
+    "license": { "name": "AGPL-3.0-only", "url": "https://github.com/ciprian-rus/teritoriu.digital/blob/main/LICENSE" }
+  },
+  "paths": {
+    "/api/v1/territories": {
+      "get": {
+        "summary": "Listează și caută unități teritoriale",
+        "description": "Căutare tolerantă la diacritice pe denumire, filtre exacte și paginare cursor deterministă, servite direct din release-ul public `stable`.",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Căutare pe denumire, tolerantă la diacritice (ex. \"brasov\" găsește \"BRAȘOV\").",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "siruta",
+            "in": "query",
+            "description": "Cod SIRUTA exact (schema `ro.ins.siruta`).",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "territoryId",
+            "in": "query",
+            "description": "Identificator persistent UUIDv7 exact.",
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "Filtru exact pe `territoryType`.",
+            "schema": { "$ref": "#/components/schemas/TerritoryType" }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "$ref": "#/components/schemas/TerritoryStatus" }
+          },
+          {
+            "name": "countyTerritoryId",
+            "in": "query",
+            "description": "Restrânge rezultatele la un singur județ (după `territoryId`-ul județului).",
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Cursor opac primit în `nextCursor` de la răspunsul anterior.",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Numărul maxim de rezultate pe pagină (implicit 50, maxim 200).",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 200, "default": 50 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pagină de rezultate.",
+            "headers": {
+              "ETag": { "schema": { "type": "string" } },
+              "Cache-Control": { "schema": { "type": "string" } }
+            },
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/TerritoryListResponse" } }
+            }
+          },
+          "304": { "description": "Conținutul nu s-a schimbat față de `If-None-Match`." },
+          "503": {
+            "description": "Release-ul public nu a putut fi descărcat sau verificat.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "TerritoryType": {
+        "type": "string",
+        "enum": [
+          "country", "macroregion", "development_region", "county", "bucharest",
+          "sector", "municipality", "city", "commune", "component_locality", "village", "other"
+        ]
+      },
+      "TerritoryStatus": { "type": "string", "enum": ["active", "inactive", "provisional"] },
+      "Identifier": {
+        "type": "object",
+        "required": ["scheme", "value", "status"],
+        "properties": {
+          "scheme": { "type": "string" },
+          "value": { "type": "string" },
+          "status": { "type": "string", "enum": ["active", "historical", "provisional"] },
+          "validFrom": { "type": ["string", "null"], "format": "date" },
+          "validTo": { "type": ["string", "null"], "format": "date" }
+        }
+      },
+      "Territory": {
+        "type": "object",
+        "required": [
+          "territoryId", "officialName", "normalizedName", "territoryType",
+          "administrativeRole", "administrativeLevel", "status", "identifiers"
+        ],
+        "properties": {
+          "territoryId": { "type": "string", "format": "uuid" },
+          "officialName": { "type": "string" },
+          "normalizedName": { "type": "string" },
+          "shortName": { "type": ["string", "null"] },
+          "territoryType": { "$ref": "#/components/schemas/TerritoryType" },
+          "administrativeRole": { "type": "string" },
+          "administrativeLevel": { "type": "integer" },
+          "parentTerritoryId": { "type": ["string", "null"], "format": "uuid" },
+          "countyTerritoryId": { "type": ["string", "null"], "format": "uuid" },
+          "status": { "$ref": "#/components/schemas/TerritoryStatus" },
+          "identifiers": { "type": "array", "items": { "$ref": "#/components/schemas/Identifier" } }
+        }
+      },
+      "TerritoryListResponse": {
+        "type": "object",
+        "required": ["release", "total", "nextCursor", "items"],
+        "properties": {
+          "release": {
+            "type": "object",
+            "required": ["releaseId", "schemaVersion", "manifestSha256"],
+            "properties": {
+              "releaseId": { "type": "string" },
+              "schemaVersion": { "type": "string" },
+              "manifestSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+            }
+          },
+          "total": { "type": "integer", "description": "Numărul total de rezultate care satisfac filtrele, înainte de paginare." },
+          "nextCursor": { "type": ["string", "null"] },
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/Territory" } }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "required": ["error"],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": ["code", "message"],
+            "properties": {
+              "code": { "type": "string" },
+              "message": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}
