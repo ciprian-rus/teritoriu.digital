@@ -18,13 +18,19 @@
     "approve:siruta": "node scripts/approve-siruta-candidate.mjs",
     "release:prepare:siruta": "node scripts/prepare-siruta-release.mjs",
     "release:promote:siruta": "node scripts/promote-siruta-release.mjs",
-    "release:stable:siruta": "node scripts/move-stable-release.mjs"
+    "release:stable:siruta": "node scripts/move-stable-release.mjs",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.110.8",
     "ajv": "8.20.0",
     "ajv-formats": "3.0.1",
+    "next": "16.2.11",
     "pg": "8.22.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
     "read-excel-file": "9.3.4"
   }
 }

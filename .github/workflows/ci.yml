@@ -28,4 +28,6 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Validate foundation
         run: npm test
+      - name: Build Next.js app
+        run: npm run build
 
