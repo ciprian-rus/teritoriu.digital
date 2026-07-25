@@ -41,6 +41,21 @@ test("GET /api/v1/territories is documented with success, cache and error respon
   ].sort());
 });
 
+test("GET /api/v1/territories/{territoryId} is documented with the 404 case", () => {
+  const operation = spec.paths["/api/v1/territories/{territoryId}"].get;
+  assert.ok(operation, "operation must exist");
+  assert.deepEqual(Object.keys(operation.responses).sort(), ["200", "304", "404", "503"]);
+  assert.equal(operation.parameters[0].name, "territoryId");
+  assert.equal(operation.parameters[0].required, true);
+});
+
+test("TerritoryDetailResponse exposes ancestors and children as Territory arrays", () => {
+  const detailSchema = spec.components.schemas.TerritoryDetailResponse;
+  assert.deepEqual(detailSchema.required.sort(), ["ancestors", "children", "release", "territory"].sort());
+  assert.equal(detailSchema.properties.ancestors.items.$ref, "#/components/schemas/Territory");
+  assert.equal(detailSchema.properties.children.items.$ref, "#/components/schemas/Territory");
+});
+
 test("every $ref in the document resolves to an existing schema", () => {
   const refs = collectRefs(spec);
   assert.ok(refs.length > 0, "expected at least one $ref in the document");

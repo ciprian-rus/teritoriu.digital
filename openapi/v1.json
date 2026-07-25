@@ -80,6 +80,45 @@
           }
         }
       }
+    },
+    "/api/v1/territories/{territoryId}": {
+      "get": {
+        "summary": "O unitate teritorială, cu strămoși și descendenți imediați",
+        "description": "Strămoșii sunt lanțul complet până la rădăcină, în ordine de la părinte direct spre rădăcină. Descendenții sunt numai copiii imediați, nu tot subarborele — un județ poate avea mii de descendenți transitivi.",
+        "parameters": [
+          {
+            "name": "territoryId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Teritoriul găsit, cu strămoși și descendenți imediați.",
+            "headers": {
+              "ETag": { "schema": { "type": "string" } },
+              "Cache-Control": { "schema": { "type": "string" } }
+            },
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/TerritoryDetailResponse" } }
+            }
+          },
+          "304": { "description": "Conținutul nu s-a schimbat față de `If-None-Match`." },
+          "404": {
+            "description": "Niciun teritoriu cu acest `territoryId` în release-ul curent.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "503": {
+            "description": "Release-ul public nu a putut fi descărcat sau verificat.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -139,6 +178,32 @@
           "total": { "type": "integer", "description": "Numărul total de rezultate care satisfac filtrele, înainte de paginare." },
           "nextCursor": { "type": ["string", "null"] },
           "items": { "type": "array", "items": { "$ref": "#/components/schemas/Territory" } }
+        }
+      },
+      "TerritoryDetailResponse": {
+        "type": "object",
+        "required": ["release", "territory", "ancestors", "children"],
+        "properties": {
+          "release": {
+            "type": "object",
+            "required": ["releaseId", "schemaVersion", "manifestSha256"],
+            "properties": {
+              "releaseId": { "type": "string" },
+              "schemaVersion": { "type": "string" },
+              "manifestSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+            }
+          },
+          "territory": { "$ref": "#/components/schemas/Territory" },
+          "ancestors": {
+            "type": "array",
+            "description": "De la părintele direct spre rădăcină.",
+            "items": { "$ref": "#/components/schemas/Territory" }
+          },
+          "children": {
+            "type": "array",
+            "description": "Numai copiii imediați, nu tot subarborele.",
+            "items": { "$ref": "#/components/schemas/Territory" }
+          }
         }
       },
       "Error": {

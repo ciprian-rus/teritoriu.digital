@@ -1,29 +1,6 @@
-import { createHash } from "node:crypto";
 import { loadVerifiedRelease } from "@/lib/release-source.mjs";
 import { searchTerritories } from "@/lib/territory-search.mjs";
-
-function toTerritoryView(territory) {
-  return {
-    territoryId: territory.territoryId,
-    officialName: territory.officialName,
-    normalizedName: territory.normalizedName,
-    shortName: territory.shortName,
-    territoryType: territory.territoryType,
-    administrativeRole: territory.administrativeRole,
-    administrativeLevel: territory.administrativeLevel,
-    parentTerritoryId: territory.parentTerritoryId,
-    countyTerritoryId: territory.countyTerritoryId,
-    status: territory.status,
-    identifiers: territory.identifiers
-  };
-}
-
-function computeEtag(release, searchParams) {
-  const hash = createHash("sha256");
-  hash.update(release.manifestSha256);
-  hash.update(searchParams.toString());
-  return `"${hash.digest("hex").slice(0, 32)}"`;
-}
+import { computeEtag, toReleaseView, toTerritoryView } from "@/lib/territory-view.mjs";
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -56,11 +33,7 @@ export async function GET(request) {
 
   return Response.json(
     {
-      release: {
-        releaseId: release.releaseId,
-        schemaVersion: release.schemaVersion,
-        manifestSha256: release.manifestSha256
-      },
+      release: toReleaseView(release),
       total,
       nextCursor,
       items: items.map(toTerritoryView)
