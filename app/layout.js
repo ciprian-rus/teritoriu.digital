@@ -1,0 +1,33 @@
+import "./globals.css";
+
+export const metadata = {
+  title: "Teritoriu.digital",
+  description: "Registrul teritorial deschis al României"
+};
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="ro">
+      <body>
+        <a className="skip-link" href="#main">
+          Sari la conținut
+        </a>
+        <header className="site-header">
+          <nav aria-label="Principal">
+            <a className="brand" href="/">
+              Teritoriu.digital
+            </a>
+            <a href="/teritorii">Registru</a>
+          </nav>
+        </header>
+        <main id="main">{children}</main>
+        <footer className="site-footer">
+          <p>
+            Teritoriu.digital nu este, în acest moment, un registru juridic oficial. Publică un model
+            canonic derivat din surse oficiale, împreună cu proveniența și limitele sale.
+          </p>
+        </footer>
+      </body>
+    </html>
+  );
+}
