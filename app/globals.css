@@ -6,6 +6,8 @@
   --border: #d0d0d0;
   --link: #0b4f9c;
   --focus: #0b4f9c;
+  --button-bg: #0b4f9c;
+  --button-fg: #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -117,9 +119,9 @@ main {
 
 .search-form button {
   padding: 0.5rem 1rem;
-  border: 1px solid var(--link);
-  background: var(--link);
-  color: #fff;
+  border: 1px solid var(--button-bg);
+  background: var(--button-bg);
+  color: var(--button-fg);
   border-radius: 4px;
   font-size: 1rem;
   cursor: pointer;

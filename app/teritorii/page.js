@@ -50,8 +50,12 @@ export default async function TerritoriesPage({ searchParams }) {
     );
   }
 
+  const trimmedQuery = q.trim();
+  const isSirutaLike = /^\d+$/.test(trimmedQuery);
+
   const { items, nextCursor, total } = searchTerritories(release.territories, {
-    q: q || undefined,
+    q: isSirutaLike ? undefined : q || undefined,
+    siruta: isSirutaLike ? trimmedQuery : undefined,
     type: type || undefined,
     status: status || undefined,
     cursor,
@@ -59,7 +63,7 @@ export default async function TerritoriesPage({ searchParams }) {
   });
 
   const counties = release.territories
-    .filter((territory) => territory.territoryType === "county" || territory.territoryType === "bucharest")
+    .filter((territory) => ["county", "bucharest", "sector"].includes(territory.territoryType))
     .sort((a, b) => a.officialName.localeCompare(b.officialName, "ro"));
 
   return (
