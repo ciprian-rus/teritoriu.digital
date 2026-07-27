@@ -43,17 +43,39 @@ test("a new window resets the count", async () => {
   assert.equal(afterReset.limited, false);
 });
 
-test("clientKey prefers the first x-forwarded-for entry, falling back to x-real-ip", () => {
-  const withForwarded = new Request("http://localhost/api/v1/territories", {
-    headers: { "x-forwarded-for": "9.9.9.9, 10.10.10.10" }
+test("clientKey trusts only the hop closest to the server, not attacker-supplied entries", () => {
+  // With 1 trusted hop (a single edge, e.g. Vercel), the LAST entry is the
+  // one that hop appended — everything before it could be spoofed by the
+  // caller and must not be trusted.
+  const spoofedPlusReal = new Request("http://localhost/api/v1/territories", {
+    headers: { "x-forwarded-for": "1.1.1.1, 9.9.9.9, 10.10.10.10" }
   });
-  assert.equal(clientKey(withForwarded), "9.9.9.9");
+  assert.equal(clientKey(spoofedPlusReal, 1), "10.10.10.10");
+
+  // With 2 trusted hops, the second-to-last entry is the one to trust.
+  assert.equal(clientKey(spoofedPlusReal, 2), "9.9.9.9");
 
   const withRealIp = new Request("http://localhost/api/v1/territories", {
     headers: { "x-real-ip": "8.8.8.8" }
   });
-  assert.equal(clientKey(withRealIp), "8.8.8.8");
+  assert.equal(clientKey(withRealIp, 1), "8.8.8.8");
 
   const withNeither = new Request("http://localhost/api/v1/territories");
-  assert.equal(clientKey(withNeither), "unknown");
+  assert.equal(clientKey(withNeither, 1), "unknown");
+});
+
+test("clientKey trusts nothing when there are zero trusted proxy hops", () => {
+  const request = new Request("http://localhost/api/v1/territories", {
+    headers: { "x-forwarded-for": "9.9.9.9", "x-real-ip": "8.8.8.8" }
+  });
+  assert.equal(clientKey(request, 0), "unknown");
+});
+
+test("many distinct keys stay fast — no full-map sweep triggered per request", () => {
+  const start = Date.now();
+  for (let i = 0; i < 500; i += 1) {
+    checkRateLimit(`stress-${i}`, { windowMs: 60_000, maxRequests: 1 });
+  }
+  const elapsed = Date.now() - start;
+  assert.ok(elapsed < 1000, `500 unique keys should be fast, took ${elapsed}ms`);
 });
