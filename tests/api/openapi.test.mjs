@@ -34,7 +34,7 @@ test("openapi document declares the documented API version", () => {
 test("GET /api/v1/territories is documented with success, cache and error responses", () => {
   const operation = spec.paths["/api/v1/territories"].get;
   assert.ok(operation, "operation must exist");
-  assert.deepEqual(Object.keys(operation.responses).sort(), ["200", "304", "503"]);
+  assert.deepEqual(Object.keys(operation.responses).sort(), ["200", "304", "429", "503"]);
   const paramNames = operation.parameters.map((param) => param.name).sort();
   assert.deepEqual(paramNames, [
     "cursor", "limit", "q", "siruta", "status", "territoryId", "type", "countyTerritoryId"
@@ -44,7 +44,7 @@ test("GET /api/v1/territories is documented with success, cache and error respon
 test("GET /api/v1/territories/{territoryId} is documented with the 404 case", () => {
   const operation = spec.paths["/api/v1/territories/{territoryId}"].get;
   assert.ok(operation, "operation must exist");
-  assert.deepEqual(Object.keys(operation.responses).sort(), ["200", "304", "404", "503"]);
+  assert.deepEqual(Object.keys(operation.responses).sort(), ["200", "304", "404", "429", "503"]);
   assert.equal(operation.parameters[0].name, "territoryId");
   assert.equal(operation.parameters[0].required, true);
 });

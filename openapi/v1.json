@@ -65,13 +65,23 @@
             "description": "Pagină de rezultate.",
             "headers": {
               "ETag": { "schema": { "type": "string" } },
-              "Cache-Control": { "schema": { "type": "string" } }
+              "Cache-Control": { "schema": { "type": "string" } },
+              "X-RateLimit-Remaining": { "schema": { "type": "integer" } }
             },
             "content": {
               "application/json": { "schema": { "$ref": "#/components/schemas/TerritoryListResponse" } }
             }
           },
           "304": { "description": "Conținutul nu s-a schimbat față de `If-None-Match`." },
+          "429": {
+            "description": "Prea multe cereri de la aceeași sursă într-o fereastră de timp.",
+            "headers": {
+              "Retry-After": { "schema": { "type": "integer" }, "description": "Secunde până la reset." }
+            },
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
           "503": {
             "description": "Release-ul public nu a putut fi descărcat sau verificat.",
             "content": {
@@ -98,7 +108,8 @@
             "description": "Teritoriul găsit, cu strămoși și descendenți imediați.",
             "headers": {
               "ETag": { "schema": { "type": "string" } },
-              "Cache-Control": { "schema": { "type": "string" } }
+              "Cache-Control": { "schema": { "type": "string" } },
+              "X-RateLimit-Remaining": { "schema": { "type": "integer" } }
             },
             "content": {
               "application/json": { "schema": { "$ref": "#/components/schemas/TerritoryDetailResponse" } }
@@ -107,6 +118,15 @@
           "304": { "description": "Conținutul nu s-a schimbat față de `If-None-Match`." },
           "404": {
             "description": "Niciun teritoriu cu acest `territoryId` în release-ul curent.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "429": {
+            "description": "Prea multe cereri de la aceeași sursă într-o fereastră de timp.",
+            "headers": {
+              "Retry-After": { "schema": { "type": "integer" }, "description": "Secunde până la reset." }
+            },
             "content": {
               "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
             }
