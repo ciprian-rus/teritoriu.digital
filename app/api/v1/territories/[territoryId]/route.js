@@ -1,10 +1,21 @@
+import { checkRateLimit, clientKey } from "@/lib/rate-limit.mjs";
 import { loadVerifiedRelease } from "@/lib/release-source.mjs";
 import { buildTerritoryIndex, getAncestors, getChildren } from "@/lib/territory-graph.mjs";
 import { computeEtag, toReleaseView, toTerritoryView } from "@/lib/territory-view.mjs";
 
 export async function GET(request, { params }) {
   const { territoryId } = await params;
-  const { searchParams } = new URL(request.url);
+
+  const rate = checkRateLimit(clientKey(request));
+  if (rate.limited) {
+    return Response.json(
+      { error: { code: "RATE_LIMITED", message: "too many requests" } },
+      {
+        status: 429,
+        headers: { "Retry-After": String(Math.ceil((rate.resetAt - Date.now()) / 1000)) }
+      }
+    );
+  }
 
   let release;
   try {
@@ -17,8 +28,9 @@ export async function GET(request, { params }) {
   }
 
   const etag = computeEtag(release, new URLSearchParams({ territoryId }));
+  const rateHeaders = { "X-RateLimit-Remaining": String(rate.remaining) };
   if (request.headers.get("if-none-match") === etag) {
-    return new Response(null, { status: 304, headers: { ETag: etag } });
+    return new Response(null, { status: 304, headers: { ETag: etag, ...rateHeaders } });
   }
 
   const index = buildTerritoryIndex(release.territories);
@@ -43,7 +55,8 @@ export async function GET(request, { params }) {
     {
       headers: {
         ETag: etag,
-        "Cache-Control": "public, max-age=60, stale-while-revalidate=300"
+        "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
+        ...rateHeaders
       }
     }
   );
