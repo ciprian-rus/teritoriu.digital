@@ -15,9 +15,13 @@ import { NextResponse } from "next/server";
  */
 export function middleware(request) {
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+  // Next.js's dev server (Fast Refresh, source maps) relies on eval() —
+  // 'unsafe-eval' is only added outside production, never shipped in the
+  // policy real visitors get.
+  const devEval = process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : "";
   const csp = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${devEval}`,
     `style-src 'self' 'nonce-${nonce}'`,
     "img-src 'self' data:",
     "font-src 'self'",
