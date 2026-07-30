@@ -27,10 +27,14 @@
     "@supabase/supabase-js": "2.110.8",
     "ajv": "8.20.0",
     "ajv-formats": "3.0.1",
-    "next": "16.2.11",
+    "next": "16.2.12",
     "pg": "8.22.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "read-excel-file": "9.3.4"
+  },
+  "overrides": {
+    "postcss": "8.5.25",
+    "sharp": "0.35.3"
   }
 }
