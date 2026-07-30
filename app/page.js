@@ -2,6 +2,10 @@ import { loadVerifiedRelease } from "@/lib/release-source.mjs";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = {
+  alternates: { canonical: "/" }
+};
+
 export default async function HomePage() {
   let release = null;
   let error = null;

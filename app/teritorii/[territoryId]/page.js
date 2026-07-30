@@ -4,6 +4,27 @@ import { buildTerritoryIndex, getAncestors, getChildren } from "@/lib/territory-
 
 export const dynamic = "force-dynamic";
 
+export async function generateMetadata({ params }) {
+  const { territoryId } = await params;
+
+  let release = null;
+  try {
+    release = await loadVerifiedRelease();
+  } catch {
+    return { title: "Teritoriu" };
+  }
+
+  const territory = buildTerritoryIndex(release.territories).byId.get(territoryId);
+  if (!territory) return { title: "Teritoriu negăsit" };
+
+  const typeLabel = TERRITORY_TYPE_LABELS[territory.territoryType] ?? territory.territoryType;
+  return {
+    title: territory.officialName,
+    description: `${territory.officialName} — ${typeLabel}, stare ${territory.status}. Identificatori, strămoși și subdiviziuni din registrul teritorial.`,
+    alternates: { canonical: `/teritorii/${territoryId}` }
+  };
+}
+
 const TERRITORY_TYPE_LABELS = {
   country: "țară",
   macroregion: "macroregiune",

@@ -1,7 +1,12 @@
 import "./globals.css";
 
+// metadataBase lets every page below declare a relative
+// `alternates.canonical` and have Next.js resolve it to an absolute URL.
+// Configurable because there's no production domain wired up yet —
+// defaults to the project's own name, not a claim that domain is live.
 export const metadata = {
-  title: "Teritoriu.digital",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://teritoriu.digital"),
+  title: { default: "Teritoriu.digital", template: "%s — Teritoriu.digital" },
   description: "Registrul teritorial deschis al României"
 };
 
