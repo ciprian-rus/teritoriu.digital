@@ -3,6 +3,15 @@ import { searchTerritories } from "@/lib/territory-search.mjs";
 
 export const dynamic = "force-dynamic";
 
+// Canonical points at the base path, not the current query string:
+// filter/search combinations aren't distinct pages worth indexing
+// separately, and would otherwise read as near-duplicate content.
+export const metadata = {
+  title: "Registrul teritorial",
+  description: "Căutare și filtrare în registrul teritorial al României: județe, UAT-uri și localități.",
+  alternates: { canonical: "/teritorii" }
+};
+
 const TERRITORY_TYPE_LABELS = {
   country: "țară",
   macroregion: "macroregiune",
