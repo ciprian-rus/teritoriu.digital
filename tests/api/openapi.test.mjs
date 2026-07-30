@@ -1,8 +1,21 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
+import Ajv2020 from "ajv/dist/2020.js";
+import addFormats from "ajv-formats";
 
 const spec = JSON.parse(readFileSync(new URL("../../openapi/v1.json", import.meta.url), "utf8"));
+
+const SCHEMA_BASE = "https://teritoriu.digital/openapi-under-test";
+const ajv = new Ajv2020({ strict: false });
+addFormats(ajv);
+ajv.addSchema(spec, SCHEMA_BASE);
+
+function validateAgainstSchema(fragmentPath, value) {
+  const validate = ajv.compile({ $ref: `${SCHEMA_BASE}#${fragmentPath}` });
+  const valid = validate(value);
+  return { valid, errors: validate.errors };
+}
 
 function collectRefs(node, refs = []) {
   if (Array.isArray(node)) {
@@ -62,6 +75,30 @@ test("every $ref in the document resolves to an existing schema", () => {
   for (const ref of refs) {
     assert.ok(resolveRef(spec, ref) !== undefined, `unresolved $ref: ${ref}`);
   }
+});
+
+test("every response example actually validates against its own declared schema", () => {
+  let checked = 0;
+  for (const [pathName, pathItem] of Object.entries(spec.paths)) {
+    for (const [method, operation] of Object.entries(pathItem)) {
+      for (const [status, response] of Object.entries(operation.responses ?? {})) {
+        const content = response.content?.["application/json"];
+        if (!content?.examples) continue;
+        for (const [exampleName, example] of Object.entries(content.examples)) {
+          const { valid, errors } = validateAgainstSchema(
+            content.schema.$ref.slice(1),
+            example.value
+          );
+          assert.ok(
+            valid,
+            `${method.toUpperCase()} ${pathName} ${status} example "${exampleName}" doesn't match its schema: ${JSON.stringify(errors)}`
+          );
+          checked += 1;
+        }
+      }
+    }
+  }
+  assert.ok(checked > 0, "expected at least one response example to check");
 });
 
 test("TerritoryListResponse matches the fields the route actually returns", () => {

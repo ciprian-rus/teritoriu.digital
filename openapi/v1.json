@@ -69,7 +69,46 @@
               "X-RateLimit-Remaining": { "schema": { "type": "integer" } }
             },
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/TerritoryListResponse" } }
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TerritoryListResponse" },
+                "examples": {
+                  "sirutaLookup": {
+                    "summary": "GET /api/v1/territories?siruta=1017 — răspuns real, capturat live",
+                    "value": {
+                      "release": {
+                        "releaseId": "2026.07.23.3",
+                        "schemaVersion": "1.0.0",
+                        "manifestSha256": "9b236c6992a65420a4f6ab3cb95020a9a76ba0d9de12c756776c6e129bdbbeca"
+                      },
+                      "total": 1,
+                      "nextCursor": null,
+                      "items": [
+                        {
+                          "territoryId": "019f8e0f-4c41-7148-96d8-c4ad595c6a0d",
+                          "officialName": "MUNICIPIUL ALBA IULIA",
+                          "normalizedName": "municipiul alba iulia",
+                          "shortName": "ALBA IULIA",
+                          "territoryType": "municipality",
+                          "administrativeRole": "local_uat",
+                          "administrativeLevel": 2,
+                          "parentTerritoryId": "019f8e0f-4c41-7361-b40e-e1c7744fd4e4",
+                          "countyTerritoryId": "019f8e0f-4c41-7361-b40e-e1c7744fd4e4",
+                          "status": "active",
+                          "identifiers": [
+                            {
+                              "scheme": "ro.ins.siruta",
+                              "value": "1017",
+                              "status": "active",
+                              "validFrom": null,
+                              "validTo": null
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
             }
           },
           "304": { "description": "Conținutul nu s-a schimbat față de `If-None-Match`." },
@@ -79,13 +118,32 @@
               "Retry-After": { "schema": { "type": "integer" }, "description": "Secunde până la reset." }
             },
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "examples": {
+                  "rateLimited": {
+                    "value": { "error": { "code": "RATE_LIMITED", "message": "too many requests" } }
+                  }
+                }
+              }
             }
           },
           "503": {
             "description": "Release-ul public nu a putut fi descărcat sau verificat.",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "examples": {
+                  "releaseUnavailable": {
+                    "value": {
+                      "error": {
+                        "code": "RELEASE_UNAVAILABLE",
+                        "message": "failed to fetch release asset manifest.json: HTTP 503"
+                      }
+                    }
+                  }
+                }
+              }
             }
           }
         }
@@ -112,14 +170,91 @@
               "X-RateLimit-Remaining": { "schema": { "type": "integer" } }
             },
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/TerritoryDetailResponse" } }
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TerritoryDetailResponse" },
+                "examples": {
+                  "albaIulia": {
+                    "summary": "GET /api/v1/territories/019f8e0f-4c41-7148-96d8-c4ad595c6a0d — răspuns real, capturat live (children trunchiat la 1 din mai multe pentru lizibilitate)",
+                    "value": {
+                      "release": {
+                        "releaseId": "2026.07.23.3",
+                        "schemaVersion": "1.0.0",
+                        "manifestSha256": "9b236c6992a65420a4f6ab3cb95020a9a76ba0d9de12c756776c6e129bdbbeca"
+                      },
+                      "territory": {
+                        "territoryId": "019f8e0f-4c41-7148-96d8-c4ad595c6a0d",
+                        "officialName": "MUNICIPIUL ALBA IULIA",
+                        "normalizedName": "municipiul alba iulia",
+                        "shortName": "ALBA IULIA",
+                        "territoryType": "municipality",
+                        "administrativeRole": "local_uat",
+                        "administrativeLevel": 2,
+                        "parentTerritoryId": "019f8e0f-4c41-7361-b40e-e1c7744fd4e4",
+                        "countyTerritoryId": "019f8e0f-4c41-7361-b40e-e1c7744fd4e4",
+                        "status": "active",
+                        "identifiers": [
+                          { "scheme": "ro.ins.siruta", "value": "1017", "status": "active", "validFrom": null, "validTo": null }
+                        ]
+                      },
+                      "ancestors": [
+                        {
+                          "territoryId": "019f8e0f-4c41-7361-b40e-e1c7744fd4e4",
+                          "officialName": "JUDEȚUL ALBA",
+                          "normalizedName": "județul alba",
+                          "shortName": "ALBA",
+                          "territoryType": "county",
+                          "administrativeRole": "county_uat",
+                          "administrativeLevel": 1,
+                          "parentTerritoryId": null,
+                          "countyTerritoryId": "019f8e0f-4c41-7361-b40e-e1c7744fd4e4",
+                          "status": "active",
+                          "identifiers": [
+                            { "scheme": "eu.eurostat.nuts", "value": "RO121", "status": "active", "validFrom": null, "validTo": null },
+                            { "scheme": "ro.ins.siruta", "value": "10", "status": "active", "validFrom": null, "validTo": null }
+                          ]
+                        }
+                      ],
+                      "children": [
+                        {
+                          "territoryId": "019f8e0f-4c41-7406-bf16-07556b9964c0",
+                          "officialName": "ALBA IULIA",
+                          "normalizedName": "alba iulia",
+                          "shortName": "ALBA IULIA",
+                          "territoryType": "component_locality",
+                          "administrativeRole": "locality",
+                          "administrativeLevel": 3,
+                          "parentTerritoryId": "019f8e0f-4c41-7148-96d8-c4ad595c6a0d",
+                          "countyTerritoryId": "019f8e0f-4c41-7361-b40e-e1c7744fd4e4",
+                          "status": "active",
+                          "identifiers": [
+                            { "scheme": "ro.ins.siruta", "value": "1026", "status": "active", "validFrom": null, "validTo": null }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
             }
           },
           "304": { "description": "Conținutul nu s-a schimbat față de `If-None-Match`." },
           "404": {
             "description": "Niciun teritoriu cu acest `territoryId` în release-ul curent.",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "examples": {
+                  "notFound": {
+                    "summary": "Răspuns real, capturat live pentru un territoryId inexistent",
+                    "value": {
+                      "error": {
+                        "code": "TERRITORY_NOT_FOUND",
+                        "message": "no territory with territoryId 00000000-0000-7000-8000-000000000000 in release 2026.07.23.3"
+                      }
+                    }
+                  }
+                }
+              }
             }
           },
           "429": {
@@ -128,13 +263,32 @@
               "Retry-After": { "schema": { "type": "integer" }, "description": "Secunde până la reset." }
             },
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "examples": {
+                  "rateLimited": {
+                    "value": { "error": { "code": "RATE_LIMITED", "message": "too many requests" } }
+                  }
+                }
+              }
             }
           },
           "503": {
             "description": "Release-ul public nu a putut fi descărcat sau verificat.",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "examples": {
+                  "releaseUnavailable": {
+                    "value": {
+                      "error": {
+                        "code": "RELEASE_UNAVAILABLE",
+                        "message": "failed to fetch release asset manifest.json: HTTP 503"
+                      }
+                    }
+                  }
+                }
+              }
             }
           }
         }
