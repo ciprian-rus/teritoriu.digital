@@ -293,6 +293,77 @@
           }
         }
       }
+    },
+    "/api/v1/territories/{territoryId}/descendants": {
+      "get": {
+        "summary": "Subarborele complet (transitiv) al unui teritoriu, paginat",
+        "description": "Toți descendenții, nu doar copiii imediați — un județ poate avea mii. Paginat la fel ca `/api/v1/territories` (cursor determinist după `territoryId`), cu aceleași filtre `type`/`status`.",
+        "parameters": [
+          {
+            "name": "territoryId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": { "$ref": "#/components/schemas/TerritoryType" }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": { "$ref": "#/components/schemas/TerritoryStatus" }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Cursor opac primit în `nextCursor` de la răspunsul anterior.",
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Numărul maxim de rezultate pe pagină (implicit 50, maxim 200).",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 200, "default": 50 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pagină din subarborele complet.",
+            "headers": {
+              "ETag": { "schema": { "type": "string" } },
+              "Cache-Control": { "schema": { "type": "string" } },
+              "X-RateLimit-Remaining": { "schema": { "type": "integer" } }
+            },
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/TerritoryListResponse" } }
+            }
+          },
+          "304": { "description": "Conținutul nu s-a schimbat față de `If-None-Match`." },
+          "404": {
+            "description": "Niciun teritoriu cu acest `territoryId` în release-ul curent.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "429": {
+            "description": "Prea multe cereri de la aceeași sursă într-o fereastră de timp.",
+            "headers": {
+              "Retry-After": { "schema": { "type": "integer" }, "description": "Secunde până la reset." }
+            },
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "503": {
+            "description": "Release-ul public nu a putut fi descărcat sau verificat.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
