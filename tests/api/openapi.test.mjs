@@ -62,6 +62,19 @@ test("GET /api/v1/territories/{territoryId} is documented with the 404 case", ()
   assert.equal(operation.parameters[0].required, true);
 });
 
+test("GET /api/v1/territories/{territoryId}/descendants is documented and paginated like the list endpoint", () => {
+  const operation = spec.paths["/api/v1/territories/{territoryId}/descendants"].get;
+  assert.ok(operation, "operation must exist");
+  assert.deepEqual(Object.keys(operation.responses).sort(), ["200", "304", "404", "429", "503"]);
+  assert.equal(
+    operation.responses["200"].content["application/json"].schema.$ref,
+    "#/components/schemas/TerritoryListResponse",
+    "reuses the same list schema as /api/v1/territories rather than inventing a parallel one"
+  );
+  const paramNames = operation.parameters.map((param) => param.name).sort();
+  assert.deepEqual(paramNames, ["cursor", "limit", "status", "territoryId", "type"].sort());
+});
+
 test("TerritoryDetailResponse exposes ancestors and children as Territory arrays", () => {
   const detailSchema = spec.components.schemas.TerritoryDetailResponse;
   assert.deepEqual(detailSchema.required.sort(), ["ancestors", "children", "release", "territory"].sort());
