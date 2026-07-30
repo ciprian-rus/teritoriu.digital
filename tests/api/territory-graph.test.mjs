@@ -82,6 +82,17 @@ test("getDescendants on an unknown territoryId does not throw", () => {
   assert.deepEqual(getDescendants("missing", index), []);
 });
 
+test("getDescendants stays fast on a large, wide subtree", () => {
+  const root = territory("big-root", null);
+  const children = Array.from({ length: 5000 }, (_, i) => territory(`big-child-${i}`, "big-root"));
+  const index = buildTerritoryIndex([root, ...children]);
+  const start = Date.now();
+  const descendants = getDescendants("big-root", index);
+  const elapsed = Date.now() - start;
+  assert.equal(descendants.length, 5000);
+  assert.ok(elapsed < 500, `5000 descendants should traverse quickly, took ${elapsed}ms`);
+});
+
 test("getDescendants terminates on a childhood cycle instead of looping forever", () => {
   // b <-> c: b's parent is c, and c's parent is b — a direct two-node
   // cycle. Starting the traversal from inside the cycle is what would
