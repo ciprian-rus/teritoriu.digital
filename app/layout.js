@@ -24,6 +24,7 @@ export default function RootLayout({ children }) {
             </a>
             <a href="/teritorii">Registru</a>
             <a href="/date">Date și API</a>
+            <a href="/versiuni">Versiuni</a>
           </nav>
         </header>
         <main id="main">{children}</main>
