@@ -364,6 +364,63 @@
           }
         }
       }
+    },
+    "/api/v1/changelog": {
+      "get": {
+        "summary": "Diferența determinist calculată față de release-ul anterior",
+        "description": "Coduri SIRUTA adăugate/modificate/retrase între release-ul curent și cel imediat anterior, calculate de pipeline la publicare (nu la cerere). Nu clasifică încă redenumiri/divizări/comasări ca atare.",
+        "responses": {
+          "200": {
+            "description": "Diferența față de release-ul anterior.",
+            "headers": {
+              "ETag": { "schema": { "type": "string" } },
+              "Cache-Control": { "schema": { "type": "string" } },
+              "X-RateLimit-Remaining": { "schema": { "type": "integer" } }
+            },
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ChangelogResponse" },
+                "examples": {
+                  "baseline": {
+                    "summary": "GET /api/v1/changelog — răspuns real, capturat live",
+                    "value": {
+                      "release": {
+                        "releaseId": "2026.07.23.3",
+                        "schemaVersion": "1.0.0",
+                        "manifestSha256": "9b236c6992a65420a4f6ab3cb95020a9a76ba0d9de12c756776c6e129bdbbeca"
+                      },
+                      "previousReleaseId": "2026.07.23.2",
+                      "baseline": true,
+                      "added": [],
+                      "changed": [],
+                      "removed": [],
+                      "sourceRecordChanged": [],
+                      "unchanged": 16978,
+                      "ratios": { "changed": 0, "removed": 0, "totalDelta": 0 }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "304": { "description": "Conținutul nu s-a schimbat față de `If-None-Match`." },
+          "429": {
+            "description": "Prea multe cereri de la aceeași sursă într-o fereastră de timp.",
+            "headers": {
+              "Retry-After": { "schema": { "type": "integer" }, "description": "Secunde până la reset." }
+            },
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "503": {
+            "description": "Release-ul public nu a putut fi descărcat sau verificat.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -448,6 +505,37 @@
             "type": "array",
             "description": "Numai copiii imediați, nu tot subarborele.",
             "items": { "$ref": "#/components/schemas/Territory" }
+          }
+        }
+      },
+      "ChangelogResponse": {
+        "type": "object",
+        "required": ["release", "previousReleaseId", "baseline", "added", "changed", "removed", "sourceRecordChanged", "unchanged", "ratios"],
+        "properties": {
+          "release": {
+            "type": "object",
+            "required": ["releaseId", "schemaVersion", "manifestSha256"],
+            "properties": {
+              "releaseId": { "type": "string" },
+              "schemaVersion": { "type": "string" },
+              "manifestSha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+            }
+          },
+          "previousReleaseId": { "type": ["string", "null"] },
+          "baseline": { "type": "boolean", "description": "Adevărat dacă acest release nu are un release anterior comparabil în mod semnificativ." },
+          "added": { "type": "array", "items": { "type": "string" }, "description": "Coduri SIRUTA noi față de release-ul anterior." },
+          "changed": { "type": "array", "items": { "type": "string" } },
+          "removed": { "type": "array", "items": { "type": "string" } },
+          "sourceRecordChanged": { "type": "array", "items": { "type": "string" }, "description": "Înregistrarea sursă s-a schimbat fără schimbare de identitate publicată." },
+          "unchanged": { "type": "integer" },
+          "ratios": {
+            "type": "object",
+            "required": ["changed", "removed", "totalDelta"],
+            "properties": {
+              "changed": { "type": "number" },
+              "removed": { "type": "number" },
+              "totalDelta": { "type": "number" }
+            }
           }
         }
       },
