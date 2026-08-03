@@ -23,6 +23,7 @@ export default function RootLayout({ children }) {
               Teritoriu.digital
             </a>
             <a href="/teritorii">Registru</a>
+            <a href="/date">Date și API</a>
           </nav>
         </header>
         <main id="main">{children}</main>
