@@ -79,7 +79,7 @@ Registrul de adresare prevăzut de propunerea legislativă este un context disti
     └── tests/               # teste pgTAP
 ```
 
-Interfața publică și API-ul vor fi adăugate incremental. Primul release SIRUTA stabil este public, iar contractul public v1 pentru consumatori este implementat în repository și urmează să fie inclus într-un release nou, fără modificarea release-ului existent. Planul de control Supabase este dedicat și versionat prin migrații.
+Interfața publică (`/`, `/teritorii`, `/date`, `/versiuni`) și API-ul public (`/api/v1`) sunt construite și testate (căutare, ierarhie, subarbore, changelog, OpenAPI, rate limiting). Primul release SIRUTA stabil este public, iar contractul public v1 pentru consumatori este implementat în repository. Planul de control Supabase este dedicat și versionat prin migrații.
 
 ## Verificare locală
 
@@ -116,4 +116,14 @@ Datele publicate în fiecare release (`territories.json`, `territories.csv`, NDJ
 
 ## Stare
 
-M1–M3 sunt demonstrate pe snapshotul oficial și pe release-ul public [`2026.07.23.3`](https://github.com/ciprian-rus/teritoriu.digital/releases/tag/siruta-2026.07.23.3), care publică și contractul public v1 (`1.0.0`, 13 artefacte, `stable` curent; `.2` rămâne disponibil pentru rollback). Contractul producător este închis (#8). Următoarea poartă este **M8 — primul consumator Inventar.digital**: un PR de import în draft există ([inventar-digital-stat#122](https://github.com/ciprian-rus/inventar-digital-stat/pull/122)), fără persistență, activare sau scriere Supabase încă. Schema internă rămâne neexpusă public.
+M1–M3 sunt demonstrate pe snapshotul oficial și pe release-ul public [`2026.07.23.3`](https://github.com/ciprian-rus/teritoriu.digital/releases/tag/siruta-2026.07.23.3), care publică și contractul public v1 (`1.0.0`, 13 artefacte, `stable` curent; `.2` și `.1` rămân disponibile pentru rollback). Contractul producător este închis (#8).
+
+**M4 (site) și M5 (API) sunt finalizate**: căutare/listare/detaliu accesibile, `/api/v1` complet (listare, ierarhie, subarbore, changelog), OpenAPI documentat cu exemple validate, rate limiting, audit axe + Lighthouse (98-100), verificare stratificată pe toate cele 42 județe/3181 UAT, navigare completă doar-tastatură, benchmark de sarcină și fuzz testing pe parametri.
+
+**M7 (istoric)** are prima felie publică live (`/versiuni`, `GET /api/v1/changelog`) peste diff-ul determinist deja calculat de pipeline; clasificarea semantică redenumire/divizare/comasare rămâne deschisă (relațiile predecessor/succesor există în schemă, dar nu sunt încă populate).
+
+**M8 — Inventar.digital**: consumatorul fail-closed și orchestratorul de staging pe Supabase real sunt mergeate ([inventar-digital-stat#122](https://github.com/ciprian-rus/inventar-digital-stat/pull/122), [#129](https://github.com/ciprian-rus/inventar-digital-stat/pull/129)); activarea și rollbackul rămân checkpointuri separate, blocate pe configurarea secretelor de Production.
+
+**M11 (hardening)** e parțial: Actions pinned pe SHA, `dependabot.yml`, SBOM în CI, gate `npm audit`, threat model documentat; branch protection și secret scanning rămân la deținătorul repo-ului.
+
+**M6 (geometrii ANCPI)** rămâne blocat pe accesul la sursa oficială din mediul curent de execuție automatizat. Schema internă rămâne neexpusă public.
