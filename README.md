@@ -122,7 +122,7 @@ M1–M3 sunt demonstrate pe snapshotul oficial și pe release-ul public [`2026.0
 
 **M7 (istoric)** are prima felie publică live (`/versiuni`, `GET /api/v1/changelog`) peste diff-ul determinist deja calculat de pipeline; clasificarea semantică redenumire/divizare/comasare rămâne deschisă (relațiile predecessor/succesor există în schemă, dar nu sunt încă populate).
 
-**M8 — Inventar.digital**: consumatorul fail-closed și orchestratorul de staging pe Supabase real sunt mergeate ([inventar-digital-stat#122](https://github.com/ciprian-rus/inventar-digital-stat/pull/122), [#129](https://github.com/ciprian-rus/inventar-digital-stat/pull/129)); activarea și rollbackul rămân checkpointuri separate, blocate pe configurarea secretelor de Production.
+**M8 — contractul consumatorului** e finalizat (#8): documentat, verificat și demonstrat printr-un consumator real (Inventar.digital, [inventar-digital-stat#122](https://github.com/ciprian-rus/inventar-digital-stat/pull/122)/[#129](https://github.com/ciprian-rus/inventar-digital-stat/pull/129)). Teritoriu.digital rămâne producătorul canonic — cum integrează un consumator (Inventar sau oricare altul) release-urile, inclusiv activarea și rollbackul interne, se urmărește exclusiv în tracker-ul acelui proiect.
 
 **M11 (hardening)** e parțial: Actions pinned pe SHA, `dependabot.yml`, SBOM în CI, gate `npm audit`, threat model documentat; branch protection și secret scanning rămân la deținătorul repo-ului.
 
