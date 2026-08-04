@@ -3,6 +3,7 @@ import { loadVerifiedRelease } from "@/lib/release-source.mjs";
 import { buildTerritoryIndex, getAncestors, getChildren } from "@/lib/territory-graph.mjs";
 import { buildSlugIndex, resolveBySlugPath, slugPathFor } from "@/lib/territory-slug.mjs";
 import { TERRITORY_TYPE_LABELS } from "@/lib/territory-labels.mjs";
+import { UatMap } from "@/app/_components/uat-map.js";
 
 export const dynamic = "force-dynamic";
 
@@ -101,6 +102,21 @@ export default async function TerritoryDetailPage({ params }) {
           ))}
         </tbody>
       </table>
+
+      {!territory.parentTerritoryId && children.length > 0 && (
+        <>
+          <h2>Hartă interactivă</h2>
+          <UatMap
+            countyGeometry={release.geometriesByTerritoryId?.get(territory.territoryId) ?? null}
+            label={territory.officialName}
+            units={children.map((child) => ({
+              ...child,
+              geometry: release.geometriesByTerritoryId?.get(child.territoryId) ?? null,
+              path: slugPathFor(child, [...ancestors, territory], slugIndex)
+            }))}
+          />
+        </>
+      )}
 
       {children.length > 0 && (
         <>
