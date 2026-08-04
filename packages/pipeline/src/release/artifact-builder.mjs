@@ -7,6 +7,7 @@ import contractSchema from "../../../../schemas/contract.schema.json" with { typ
 import manifestSchema from "../../../../schemas/release-manifest.schema.json" with { type: "json" };
 import territoriesSchema from "../../../../schemas/territories.schema.json" with { type: "json" };
 import territorySchema from "../../../../schemas/territory.schema.json" with { type: "json" };
+import territoryGeometriesSchema from "../../../../schemas/territory-geometries.schema.json" with { type: "json" };
 import {
   canonicalJson,
   canonicalJsonPretty,
@@ -14,7 +15,11 @@ import {
 } from "../canonical/canonical-json.mjs";
 
 export const PUBLIC_CONTRACT_NAME = "teritoriu.digital/siruta-release";
-export const PUBLIC_CONTRACT_VERSION = "1.0.0";
+// 1.1.0: adaugă suportul (aditiv, opțional) pentru territory-geometries.geojson
+// — vezi docs/public-contract-v1.md. Un release fără geometrii disponibile
+// nu-l declară deloc în contract.artifacts; nu e o schimbare retroactivă
+// pentru niciun release deja publicat.
+export const PUBLIC_CONTRACT_VERSION = "1.1.0";
 const RELEASE_ID = /^[0-9]{4}\.[0-9]{2}\.[0-9]{2}\.[1-9][0-9]*$/;
 const SEMVER = /^[0-9]+\.[0-9]+\.[0-9]+$/;
 const UUID_V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -38,7 +43,9 @@ const MEDIA_TYPES = Object.freeze({
   "territory-identifiers.csv": "text/csv; charset=utf-8",
   "territory.schema.json": "application/schema+json",
   "validation-report.json": "application/json",
-  "changelog.json": "application/json"
+  "changelog.json": "application/json",
+  "territory-geometries.geojson": "application/geo+json",
+  "territory-geometries.schema.json": "application/schema+json"
 });
 
 function fail(message) {
@@ -85,7 +92,8 @@ function createValidators() {
     contract: ajv.compile(contractSchema),
     manifest: ajv.compile(manifestSchema),
     territories: ajv.compile(territoriesSchema),
-    territory: ajv.getSchema(territorySchema.$id)
+    territory: ajv.getSchema(territorySchema.$id),
+    territoryGeometries: ajv.compile(territoryGeometriesSchema)
   };
 }
 
@@ -348,7 +356,25 @@ export function territoryIdentifiersCsv(territories) {
   return `${[headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\n")}\n`;
 }
 
-function publicContractDescriptor(schemaVersion) {
+function publicContractDescriptor(schemaVersion, options = {}) {
+  const geometryArtifacts = options.includeGeometries
+    ? [
+        {
+          name: "territory-geometries.geojson",
+          purpose: "territory-geometries",
+          mediaType: MEDIA_TYPES["territory-geometries.geojson"],
+          required: false,
+          schema: "territory-geometries.schema.json"
+        },
+        {
+          name: "territory-geometries.schema.json",
+          purpose: "territory-geometries-schema",
+          mediaType: MEDIA_TYPES["territory-geometries.schema.json"],
+          required: false,
+          schema: null
+        }
+      ]
+    : [];
   return {
     $schema: contractSchema.$id,
     name: PUBLIC_CONTRACT_NAME,
@@ -453,7 +479,8 @@ function publicContractDescriptor(schemaVersion) {
         mediaType: MEDIA_TYPES["validation-report.json"],
         required: true,
         schema: null
-      }
+      },
+      ...geometryArtifacts
     ],
     consumerReport: {
       statusValues: ["accepted", "rejected"],
@@ -487,8 +514,19 @@ function releaseCounts(territories) {
   };
 }
 
-export function buildReleaseBundle({ candidate, validationReport, diff, metadata }) {
+export function buildReleaseBundle({ candidate, validationReport, diff, metadata, geometries }) {
   validateCandidate(candidate);
+  if (geometries !== undefined) {
+    if (!validators.territoryGeometries(geometries)) {
+      fail(`territory geometries schema validation failed: ${schemaErrors(validators.territoryGeometries)}`);
+    }
+    const candidateTerritoryIds = new Set(candidate.territories.map((territory) => territory.territoryId));
+    for (const feature of geometries.features) {
+      if (!candidateTerritoryIds.has(feature.properties.territoryId)) {
+        fail(`geometries reference a territory outside this release: ${feature.properties.territoryId}`);
+      }
+    }
+  }
   validateMetadata(metadata, candidate, validationReport);
   validateDiff(diff, metadata.previousReleaseId, candidate.territories.length);
 
@@ -520,7 +558,9 @@ export function buildReleaseBundle({ candidate, validationReport, diff, metadata
     unchanged: diff.unchanged,
     ratios: diff.ratios ?? null
   };
-  const contract = publicContractDescriptor(candidate.schemaVersion);
+  const contract = publicContractDescriptor(candidate.schemaVersion, {
+    includeGeometries: geometries !== undefined
+  });
   if (!validators.contract(contract)) {
     fail(`contract schema validation failed: ${schemaErrors(validators.contract)}`);
   }
@@ -537,6 +577,13 @@ export function buildReleaseBundle({ candidate, validationReport, diff, metadata
     ["validation-report.json", Buffer.from(canonicalJsonPretty(validationReport), "utf8")],
     ["changelog.json", Buffer.from(canonicalJsonPretty(changelog), "utf8")]
   ]);
+  if (geometries !== undefined) {
+    artifacts.set("territory-geometries.geojson", Buffer.from(canonicalJsonPretty(geometries), "utf8"));
+    artifacts.set(
+      "territory-geometries.schema.json",
+      Buffer.from(canonicalJsonPretty(territoryGeometriesSchema), "utf8")
+    );
+  }
   const artifactEntries = [...artifacts.entries()]
     .map(([name, bytes]) => artifactMetadata(name, bytes, baseUri))
     .sort((left, right) => left.name.localeCompare(right.name));
@@ -628,7 +675,10 @@ function createBundledValidators(bundle) {
     contract: jsonArtifact(bundle, "contract.schema.json"),
     manifest: jsonArtifact(bundle, "release-manifest.schema.json"),
     territories: jsonArtifact(bundle, "territories.schema.json"),
-    territory: jsonArtifact(bundle, "territory.schema.json")
+    territory: jsonArtifact(bundle, "territory.schema.json"),
+    territoryGeometries: bundle.artifacts.has("territory-geometries.schema.json")
+      ? jsonArtifact(bundle, "territory-geometries.schema.json")
+      : null
   };
   const ajv = new Ajv2020({ allErrors: true, strict: true });
   addFormats(ajv);
@@ -638,7 +688,10 @@ function createBundledValidators(bundle) {
       contract: ajv.compile(bundledSchemas.contract),
       manifest: ajv.compile(bundledSchemas.manifest),
       territories: ajv.compile(bundledSchemas.territories),
-      territory: ajv.getSchema(bundledSchemas.territory.$id)
+      territory: ajv.getSchema(bundledSchemas.territory.$id),
+      territoryGeometries: bundledSchemas.territoryGeometries
+        ? ajv.compile(bundledSchemas.territoryGeometries)
+        : null
     };
   } catch (error) {
     fail(`bundled JSON Schemas could not be compiled: ${error.message}`);
@@ -707,6 +760,21 @@ export function verifyReleaseBundle(bundle) {
   }
   if (!bundledValidators.territories(payload)) {
     fail(`territories payload schema validation failed: ${schemaErrors(bundledValidators.territories)}`);
+  }
+  if (bundle.artifacts.has("territory-geometries.geojson")) {
+    const geometries = jsonArtifact(bundle, "territory-geometries.geojson");
+    if (!bundledValidators.territoryGeometries) {
+      fail("territory-geometries.geojson is present without its bundled schema");
+    }
+    if (!bundledValidators.territoryGeometries(geometries)) {
+      fail(`territory geometries schema validation failed: ${schemaErrors(bundledValidators.territoryGeometries)}`);
+    }
+    const payloadTerritoryIds = new Set(payload.territories.map((territory) => territory.territoryId));
+    for (const feature of geometries.features) {
+      if (!payloadTerritoryIds.has(feature.properties.territoryId)) {
+        fail(`territory-geometries.geojson references a territory outside this release: ${feature.properties.territoryId}`);
+      }
+    }
   }
   assertPublicContractCompatibility(contract, manifest);
 

@@ -12,6 +12,7 @@ import {
   unchangedReleaseDiff
 } from "../packages/pipeline/src/release/artifact-builder.mjs";
 import { writeReleaseBundle } from "../packages/pipeline/src/release/bundle-files.mjs";
+import { buildGeometriesArtifact, readLatestGeometries } from "../packages/pipeline/src/release/geometry-artifact.mjs";
 import { loadApprovedSirutaContext } from "../packages/pipeline/src/release/postgres-release.mjs";
 
 const { Pool } = pg;
@@ -103,6 +104,14 @@ try {
     summary: result.summary,
     findings: result.findings
   };
+  // Geometries are optional and additive (contractVersion 1.1.0): a release
+  // still publishes normally if no geometry has been matched for any of its
+  // territories yet — M6's acquisition cadence is independent of SIRUTA's.
+  const candidateTerritoryIds = new Set(result.candidate.territories.map((territory) => territory.territoryId));
+  const geometryRows = (await readLatestGeometries(client)).filter((row) =>
+    candidateTerritoryIds.has(row.territoryId)
+  );
+  const geometries = geometryRows.length > 0 ? buildGeometriesArtifact(geometryRows) : undefined;
   const bundle = buildReleaseBundle({
     candidate: result.candidate,
     validationReport,
@@ -115,7 +124,8 @@ try {
       repository: args.repository,
       approval: context.approval,
       source: context.source
-    }
+    },
+    geometries
   });
   const outputDirectory = args.outputDirectory ?? path.join(".artifacts", "releases", args.releaseId);
   const writeResult = await writeReleaseBundle(outputDirectory, bundle);
@@ -125,6 +135,7 @@ try {
     releaseTag: bundle.releaseTag,
     manifestSha256: bundle.manifestSha256,
     candidateSha256: context.candidateSha256,
+    geometryCount: geometryRows.length,
     outputDirectory,
     ...writeResult
   }, null, 2));

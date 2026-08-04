@@ -4,7 +4,9 @@
 
 Contractul `teritoriu.digital/siruta-release` permite unui consumator să importe un release teritorial fără acces la Supabase, la INS sau la un API disponibil în timp real. Consumatorul fixează `releaseId` și SHA-256 al manifestului, verifică întregul bundle în staging și schimbă read-model-ul activ numai după acceptarea completă.
 
-Contractul public începe cu `contractVersion = 1.0.0`. Release-ul SIRUTA `2026.07.23.2` rămâne imuabil și nu este modificat retroactiv; primul release care conține toate activele contractului v1 va avea un identificator nou. Pipeline-ul permite acest release ulterior numai după recanonicalizare și aprobare distincte, dacă `candidateSha256` rămâne identic cu `stable`.
+Contractul public a început cu `contractVersion = 1.0.0`. Release-ul SIRUTA `2026.07.23.2` rămâne imuabil și nu este modificat retroactiv; primul release care conține toate activele contractului v1 va avea un identificator nou. Pipeline-ul permite acest release ulterior numai după recanonicalizare și aprobare distincte, dacă `candidateSha256` rămâne identic cu `stable`.
+
+De la `contractVersion = 1.1.0`, contractul admite opțional geometriile teritoriale (M6) ca artefact aditiv — vezi „Geometrii teritoriale (opțional)" mai jos. Un release fără geometrii disponibile rămâne complet valid: `contractVersion` crește pentru că *schema* contractului permite acum un activ opțional, nu pentru că fiecare release trebuie să-l includă.
 
 ## Bundle obligatoriu
 
@@ -25,6 +27,19 @@ Contractul public începe cu `contractVersion = 1.0.0`. Release-ul SIRUTA `2026.
 | `changelog.json` | diff-ul machine-readable față de release-ul anterior |
 
 Manifestul conține hashul și dimensiunea fiecărui activ non-circular. `SHA256SUMS` include și manifestul, descriptorul și schemele. NDJSON și tabelul identificatorilor sunt regenerate de verificator din `territories.json` și trebuie să coincidă byte-for-byte.
+
+## Geometrii teritoriale (opțional)
+
+Dacă release-ul include geometrii (M6), bundle-ul conține și:
+
+| Fișier | Rol |
+|---|---|
+| `territory-geometries.geojson` | `FeatureCollection` GeoJSON, un `Feature` per teritoriu cu geometrie disponibilă |
+| `territory-geometries.schema.json` | JSON Schema pentru `territory-geometries.geojson` |
+
+Fiecare `Feature` are `properties.territoryId` egal cu un `territoryId` din `territories.json` al aceluiași release — un consumator respinge fail-closed orice geometrie care ar referi un teritoriu din afara release-ului. `properties.geometryKind` (`source`/`derived`/`simplified`) și `properties.detailLevel` (`original`/`high`/`medium`/`low`) descriu proveniența și nivelul de detaliu; `properties.sourceSnapshotId` leagă geometria de snapshotul ANCPI din care provine. Licența (`license`, la nivelul întregului `FeatureCollection`) e declarată separat de `manifest.license` (SIRUTA), pentru că sursa e alta (ANCPI RELUAT), chiar dacă ambele sunt `CC BY 4.0`.
+
+Ambele fișiere sunt declarate în `contract.json` cu `required: false` — un release fără geometrii disponibile pur și simplu nu le declară și nu le include; nu e o valoare lipsă sau un placeholder gol.
 
 ## Identitate și ierarhie
 
