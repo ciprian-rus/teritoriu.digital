@@ -489,8 +489,7 @@ for (const invariant of [
   "readReleaseBundle",
   "cmp --silent",
   "contract.json",
-  "territories.ndjson",
-  "territory-identifiers.csv",
+  "manifest.artifacts.map((a) => a.name)",
   "release:promote:siruta",
   "--require-existing-promotion"
 ]) {
