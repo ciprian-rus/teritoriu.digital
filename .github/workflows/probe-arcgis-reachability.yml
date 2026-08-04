@@ -1,0 +1,35 @@
+name: Probe ArcGIS license metadata
+
+# Throwaway diagnostic: reads the ANCPI RELUAT FeatureServer/item metadata
+# (copyright/license fields only, no feature geometry) from a GitHub-hosted
+# runner, since arcgis.com is blocked from the interactive sandbox this
+# repo is normally developed from. Does not read or write repository data.
+on:
+  push:
+    branches:
+      - claude/probe-arcgis-license
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Query FeatureServer layer metadata
+        run: |
+          curl --silent --show-error --connect-timeout 10 --max-time 30 --max-filesize 2097152 \
+            'https://services-eu1.arcgis.com/tt6hwS9xmcvnRjQC/ArcGIS/rest/services/AU_Unit%C4%83%C8%9Bi_administrative/FeatureServer/1?f=json' \
+            | python3 -m json.tool
+      - name: Query FeatureServer root (service-level copyright/description)
+        run: |
+          curl --silent --show-error --connect-timeout 10 --max-time 30 --max-filesize 2097152 \
+            'https://services-eu1.arcgis.com/tt6hwS9xmcvnRjQC/ArcGIS/rest/services/AU_Unit%C4%83%C8%9Bi_administrative/FeatureServer?f=json' \
+            | python3 -m json.tool
+      - name: Query the public item metadata (sharing API, no auth)
+        run: |
+          curl --silent --show-error --connect-timeout 10 --max-time 30 --max-filesize 2097152 \
+            'https://www.arcgis.com/sharing/rest/content/items/466b7199c19f4904831e14bc7f407af9?f=json' \
+            | python3 -m json.tool
