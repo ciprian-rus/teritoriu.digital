@@ -214,3 +214,90 @@ table.results td {
   background: var(--sd-color-feedback-danger-background);
   color: var(--sd-color-feedback-danger-text);
 }
+
+.nationalMap,
+.uatMap {
+  margin: 0 0 1.5rem;
+}
+
+.nationalMap svg,
+.uatMap svg {
+  width: 100%;
+  height: auto;
+  max-height: 26rem;
+}
+
+.nationalMapShape,
+.uatMapShape {
+  fill: var(--sd-color-surface-page);
+  stroke: var(--sd-color-border);
+  stroke-width: 1;
+  transition: fill 0.15s ease;
+}
+
+.nationalMapShape:hover,
+.uatMapShape:hover {
+  fill: var(--sd-color-action-primary-background);
+  opacity: 0.15;
+}
+
+.nationalMap a:focus-visible .nationalMapShape,
+.uatMapShapeLink:focus-visible .uatMapShape {
+  outline: var(--sd-focus-width) solid var(--sd-color-focus);
+  outline-offset: var(--sd-focus-offset);
+}
+
+.uatMapCountyOutline {
+  fill: none;
+  stroke: var(--sd-color-text-muted);
+  stroke-width: 1.5;
+}
+
+.uatMapShapeLink {
+  cursor: pointer;
+}
+
+.uatMapShapeLabel {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.1s ease;
+}
+
+.uatMapShapeLink:hover .uatMapShapeLabel,
+.uatMapShapeLink:focus-visible .uatMapShapeLabel {
+  opacity: 1;
+}
+
+.uatMapShapeLabel rect {
+  fill: var(--sd-color-surface-page);
+  stroke: var(--sd-color-border);
+  stroke-width: 1;
+}
+
+.uatMapShapeLabel text {
+  fill: var(--sd-color-text);
+  font-size: 10px;
+}
+
+.uatMapNote {
+  color: var(--sd-color-text-muted);
+  font-size: var(--sd-font-size-body-small);
+}
+
+.nationalMapFallback,
+.uatMapFallback {
+  border: 1px dashed var(--sd-color-border);
+  border-radius: var(--sd-core-dimension-radius-panel);
+  padding: 1.5rem;
+  color: var(--sd-color-text-muted);
+}
+
+.nationalMapSilhouette {
+  width: 6rem;
+  height: auto;
+  margin-bottom: 0.75rem;
+}
+
+.nationalMapSilhouette path {
+  fill: var(--sd-color-border);
+}

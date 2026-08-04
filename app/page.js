@@ -3,6 +3,7 @@ import { searchTerritories } from "@/lib/territory-search.mjs";
 import { buildTerritoryIndex, getAncestors } from "@/lib/territory-graph.mjs";
 import { buildSlugIndex, slugPathFor } from "@/lib/territory-slug.mjs";
 import { TERRITORY_TYPE_LABELS } from "@/lib/territory-labels.mjs";
+import { NationalMap } from "@/app/_components/national-map.js";
 
 export const dynamic = "force-dynamic";
 
@@ -74,6 +75,14 @@ export default async function HomePage({ searchParams }) {
         Caută județe, UAT-uri și localități după denumire sau cod SIRUTA, cu identificatori persistenți
         și proveniență verificabilă.
       </p>
+
+      <NationalMap
+        counties={counties.map((county) => ({
+          ...county,
+          geometry: release.geometriesByTerritoryId?.get(county.territoryId) ?? null,
+          path: pathFor(county)
+        }))}
+      />
 
       <form className="search-form" action="/" method="get">
         <label htmlFor="q">
