@@ -26,6 +26,8 @@ jobs:
           cache: npm
       - name: Install
         run: npm ci --ignore-scripts
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
       - name: Validate foundation
         run: npm test
       - name: Build Next.js app

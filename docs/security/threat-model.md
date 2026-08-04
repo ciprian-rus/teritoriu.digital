@@ -58,11 +58,12 @@ drepturi de admin să confirme sau să schimbe asta).
 - **Mitigare**: Actions pinned la commit SHA (nu tag-uri mutabile) în toate
   workflow-urile; `dependabot.yml` propune actualizări săptămânale pentru npm și
   Actions; SBOM (CycloneDX) generat și păstrat ca artefact la fiecare rulare CI;
-  `npm ci --ignore-scripts` în CI (nu rulează scripturi de instalare arbitrare).
-- **Rezidual**: `npm audit` nu rulează automat în CI (task separat, făcut manual
-  anterior — vezi task-ul „npm audit review"); dependența de integritatea
-  registry-ului npm însuși (`npm audit`/`npm ci` au verificare de integritate
-  prin lockfile, dar nu semnătură criptografică per pachet).
+  `npm ci --ignore-scripts` în CI (nu rulează scripturi de instalare arbitrare);
+  `npm audit --audit-level=high` rulează în CI la fiecare push/PR și eșuează
+  build-ul pe vulnerabilități high/critical necorectate.
+- **Rezidual**: dependența de integritatea registry-ului npm însuși
+  (`npm audit`/`npm ci` au verificare de integritate prin lockfile, dar nu
+  semnătură criptografică per pachet).
 
 ### 4. Abuz al API-ului public (scraping agresiv, enumerare, DoS aplicativ)
 - **Mitigare**: rate limiting per client (120 req/60s implicit), CSP cu nonce,
@@ -103,9 +104,6 @@ drepturi de admin să confirme sau să schimbe asta).
   neluată încă (nu e specific acestui cod).
 - **Rotația secretelor Supabase e manuală** — acceptat pentru moment, documentat
   ca gol cunoscut, nu ca lucru rezolvat.
-- **`npm audit` nu rulează automat în CI** — verificat manual periodic; automatizarea
-  completă (fail CI pe vulnerabilități high/critical) e o îmbunătățire viitoare,
-  nu un blocker pentru starea actuală.
 
 Niciunul din riscurile de mai sus nu e clasificat drept critic/blocant pentru
 starea curentă a proiectului (pre-M12); toate sunt cunoscute, documentate și
