@@ -3,6 +3,12 @@ import path from "node:path";
 
 import { verifyReleaseBundle } from "./artifact-builder.mjs";
 
+// The baseline files every release has, regardless of which optional
+// artifacts (e.g. territory-geometries.geojson) it also declares.
+// writeReleaseBundle/readReleaseBundle derive the actual file set from the
+// bundle itself (contract.json's own declared artifacts, self-consistently
+// checked by verifyReleaseBundle) rather than this fixed list, so an
+// optional artifact doesn't need a matching change here.
 export const RELEASE_BUNDLE_FILES = Object.freeze([
   "SHA256SUMS",
   "changelog.json",
@@ -40,20 +46,26 @@ async function writeOnce(filePath, bytes) {
 export async function writeReleaseBundle(directory, bundle) {
   verifyReleaseBundle(bundle);
   const names = [...bundle.artifacts.keys()].sort();
-  if (JSON.stringify(names) !== JSON.stringify([...RELEASE_BUNDLE_FILES].sort())) {
-    throw new Error("Release bundle contains an unexpected file set");
-  }
   await mkdir(directory, { recursive: true });
   const created = [];
-  for (const name of RELEASE_BUNDLE_FILES) {
+  for (const name of names) {
     if (await writeOnce(path.join(directory, name), bundle.artifacts.get(name))) created.push(name);
   }
-  return { created, reused: RELEASE_BUNDLE_FILES.filter((name) => !created.includes(name)) };
+  return { created, reused: names.filter((name) => !created.includes(name)) };
 }
 
 export async function readReleaseBundle(directory) {
+  const manifestBytes = await readFile(path.join(directory, "manifest.json"));
+  let manifest;
+  try {
+    manifest = JSON.parse(manifestBytes.toString("utf8"));
+  } catch {
+    throw new Error("manifest.json is not valid JSON");
+  }
+  if (!Array.isArray(manifest.artifacts)) throw new Error("manifest.json lacks an artifacts list");
+  const names = new Set(["manifest.json", "SHA256SUMS", ...manifest.artifacts.map((item) => item.name)]);
   const artifacts = new Map();
-  for (const name of RELEASE_BUNDLE_FILES) {
+  for (const name of names) {
     artifacts.set(name, await readFile(path.join(directory, name)));
   }
   const verification = verifyReleaseBundle({ artifacts });

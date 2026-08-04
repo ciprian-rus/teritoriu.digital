@@ -39,7 +39,7 @@ Intrări:
 - `published_at` UTC exact, cu milisecunde;
 - motivarea promovării.
 
-Pipeline-ul descarcă din nou snapshotul privat, verifică dimensiunea și SHA-256, reconstruiește candidatul cu același registru de identitate și cere același `candidateSha256`. Release-urile care implementează contractul public v1 conțin exact:
+Pipeline-ul descarcă din nou snapshotul privat, verifică dimensiunea și SHA-256, reconstruiește candidatul cu același registru de identitate și cere același `candidateSha256`. Release-urile care implementează contractul public v1 conțin întotdeauna:
 
 - `contract.json` și `contract.schema.json`;
 - `manifest.json` și `release-manifest.schema.json`;
@@ -51,6 +51,8 @@ Pipeline-ul descarcă din nou snapshotul privat, verifică dimensiunea și SHA-2
 - `validation-report.json`;
 - `changelog.json`;
 - `SHA256SUMS`.
+
+Dacă există geometrii ANCPI potrivite pentru teritoriile din release (M6, `registry.territory_geometries`), pipeline-ul adaugă și artefactul opțional `territory-geometries.geojson` plus `territory-geometries.schema.json`, declarate `required: false` în `contract.json`. Un release fără geometrii disponibile publică normal, fără ele — contractul e aditiv (`contractVersion` 1.1.0), nu impune existența lor.
 
 `SHA256SUMS` include toate fișierele, mai puțin propriul hash, pentru a evita o referință circulară. Manifestul include hashurile tuturor activelor non-circulare; hashul manifestului este păstrat separat în planul de control.
 
