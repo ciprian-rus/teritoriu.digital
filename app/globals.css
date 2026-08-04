@@ -1,25 +1,9 @@
-:root {
-  color-scheme: light dark;
-  --fg: #1a1a1a;
-  --bg: #ffffff;
-  --muted: #595959;
-  --border: #d0d0d0;
-  --link: #0b4f9c;
-  --focus: #0b4f9c;
-  --button-bg: #0b4f9c;
-  --button-fg: #ffffff;
-}
+@import "@sistem-digital/tokens/css";
+@import "@sistem-digital/tokens/themes.css";
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --fg: #eaeaea;
-    --bg: #14161a;
-    --muted: #a8a8a8;
-    --border: #3a3d42;
-    --link: #7db2f0;
-    --focus: #7db2f0;
-  }
-}
+/* No data-sd-theme set on <html>: themes.css falls back to
+   prefers-color-scheme automatically, matching this site's existing
+   zero-JS light/dark behavior — no theme-init.js needed. */
 
 * {
   box-sizing: border-box;
@@ -27,27 +11,47 @@
 
 body {
   margin: 0;
-  color: var(--fg);
-  background: var(--bg);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  line-height: 1.5;
+  color: var(--sd-color-text);
+  background: var(--sd-color-surface-page);
+  font-family: var(--sd-font-sans);
+  font-size: var(--sd-font-size-body);
+  line-height: var(--sd-font-line-height-body);
+}
+
+code {
+  font-family: var(--sd-font-mono);
 }
 
 a {
-  color: var(--link);
+  color: var(--sd-color-link);
 }
 
+a:visited {
+  color: var(--sd-color-link-visited);
+}
+
+a:hover {
+  color: var(--sd-color-link-hover);
+}
+
+a:active {
+  color: var(--sd-color-link-active);
+}
+
+/* Three-layer focus (outline, offset, halo), the shared system's own
+   pattern — see @sistem-digital/components' forms.css. */
 :focus-visible {
-  outline: 3px solid var(--focus);
-  outline-offset: 2px;
+  outline: var(--sd-focus-width) solid var(--sd-color-focus);
+  outline-offset: var(--sd-focus-offset);
+  box-shadow: 0 0 0 var(--sd-focus-halo) var(--sd-color-focus-contrast);
 }
 
 .skip-link {
   position: absolute;
   left: -9999px;
   top: 0;
-  background: var(--bg);
-  color: var(--fg);
+  background: var(--sd-color-surface-page);
+  color: var(--sd-color-text);
   padding: 0.75rem 1rem;
   z-index: 100;
 }
@@ -62,13 +66,13 @@ a {
   align-items: center;
   gap: 1.5rem;
   padding: 1rem 1.25rem;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--sd-color-border);
   max-width: 72rem;
   margin: 0 auto;
 }
 
 .brand {
-  font-weight: 700;
+  font-weight: var(--sd-font-weight-bold);
   text-decoration: none;
   font-size: 1.125rem;
 }
@@ -81,9 +85,9 @@ main {
 }
 
 .site-footer {
-  border-top: 1px solid var(--border);
-  color: var(--muted);
-  font-size: 0.875rem;
+  border-top: 1px solid var(--sd-color-border);
+  color: var(--sd-color-text-muted);
+  font-size: var(--sd-font-size-body-small);
   padding: 1.25rem;
 }
 
@@ -104,27 +108,42 @@ main {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  font-size: 0.875rem;
+  font-size: var(--sd-font-size-body-small);
 }
 
 .search-form input,
 .search-form select {
-  padding: 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--bg);
-  color: var(--fg);
+  padding: var(--sd-component-input-padding-block) var(--sd-component-input-padding-inline);
+  min-height: var(--sd-component-input-min-height);
+  border: var(--sd-component-input-border-width) solid var(--sd-color-border);
+  border-radius: var(--sd-component-input-radius);
+  background: var(--sd-color-surface-page);
+  color: var(--sd-color-text);
+  font-family: inherit;
   font-size: 1rem;
 }
 
 .search-form button {
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--button-bg);
-  background: var(--button-bg);
-  color: var(--button-fg);
-  border-radius: 4px;
+  padding: var(--sd-component-button-padding-block) var(--sd-component-button-padding-inline);
+  min-height: var(--sd-component-button-min-height);
+  border: var(--sd-component-button-border-width) solid var(--sd-color-action-primary-background);
+  border-radius: var(--sd-component-button-radius);
+  background: var(--sd-color-action-primary-background);
+  color: var(--sd-color-action-primary-text);
+  font-family: inherit;
   font-size: 1rem;
+  font-weight: var(--sd-component-button-font-weight);
   cursor: pointer;
+}
+
+.search-form button:hover {
+  background: var(--sd-color-action-primary-hover);
+  border-color: var(--sd-color-action-primary-hover);
+}
+
+.search-form button:active {
+  background: var(--sd-color-action-primary-active);
+  border-color: var(--sd-color-action-primary-active);
 }
 
 table.results {
@@ -136,7 +155,7 @@ table.results th,
 table.results td {
   text-align: left;
   padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--sd-color-border);
 }
 
 .breadcrumb {
@@ -152,7 +171,7 @@ table.results td {
 .breadcrumb li::after {
   content: "/";
   margin-left: 0.4rem;
-  color: var(--muted);
+  color: var(--sd-color-text-muted);
 }
 
 .breadcrumb li:last-child::after {
@@ -161,11 +180,11 @@ table.results td {
 
 .badge {
   display: inline-block;
-  border: 1px solid var(--border);
+  border: 1px solid var(--sd-color-border);
   border-radius: 999px;
   padding: 0.1rem 0.6rem;
   font-size: 0.8rem;
-  color: var(--muted);
+  color: var(--sd-color-text-muted);
 }
 
 .pagination {
@@ -181,10 +200,17 @@ table.results td {
   white-space: nowrap;
 }
 
-.empty-state,
-.error-state {
-  border: 1px dashed var(--border);
-  border-radius: 6px;
+.empty-state {
+  border: 1px dashed var(--sd-color-border);
+  border-radius: var(--sd-core-dimension-radius-panel);
   padding: 1.5rem;
-  color: var(--muted);
+  color: var(--sd-color-text-muted);
+}
+
+.error-state {
+  border: 1px solid var(--sd-color-feedback-danger-border);
+  border-radius: var(--sd-core-dimension-radius-panel);
+  padding: 1.5rem;
+  background: var(--sd-color-feedback-danger-background);
+  color: var(--sd-color-feedback-danger-text);
 }

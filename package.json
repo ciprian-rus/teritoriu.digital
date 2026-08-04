@@ -24,6 +24,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@sistem-digital/tokens": "0.1.0-alpha.3",
     "@supabase/supabase-js": "2.110.8",
     "ajv": "8.20.0",
     "ajv-formats": "3.0.1",

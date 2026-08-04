@@ -12,7 +12,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="ro">
+    <html lang="ro" data-sd-accent="blue">
       <body>
         <a className="skip-link" href="#main">
           Sari la conținut
