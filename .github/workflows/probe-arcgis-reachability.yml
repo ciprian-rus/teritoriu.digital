@@ -1,0 +1,34 @@
+name: Probe ArcGIS reachability
+
+# Throwaway diagnostic: checks whether GitHub-hosted runners can reach the
+# ANCPI RELUAT ArcGIS FeatureServer that M6 (geometrii ANCPI) needs. This
+# workflow does not read or write any repository data — it only reports
+# whether the endpoint is reachable from CI, since it's blocked from the
+# interactive sandbox this repo is normally developed from.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Query ANCPI RELUAT FeatureServer object count
+        run: |
+          set +e
+          metrics=$(curl \
+            --silent --show-error \
+            --connect-timeout 10 \
+            --max-time 30 \
+            --max-filesize 2097152 \
+            --write-out '\nstatus=%{http_code} elapsed=%{time_total}' \
+            --data-urlencode 'where=1=1' \
+            --data-urlencode 'returnIdsOnly=true' \
+            --data-urlencode 'f=json' \
+            'https://services-eu1.arcgis.com/tt6hwS9xmcvnRjQC/ArcGIS/rest/services/AU_Unit%C4%83%C8%9Bi_administrative/FeatureServer/1/query')
+          result=$?
+          echo "ArcGIS diagnostic: ${metrics}"
+          exit "${result}"
