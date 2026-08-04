@@ -6,6 +6,9 @@ name: Probe ArcGIS reachability
 # whether the endpoint is reachable from CI, since it's blocked from the
 # interactive sandbox this repo is normally developed from.
 on:
+  push:
+    branches:
+      - claude/probe-arcgis-network
   workflow_dispatch: {}
 
 permissions:
