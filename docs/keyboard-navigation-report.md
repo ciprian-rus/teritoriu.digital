@@ -8,14 +8,14 @@ producție local.
 
 ## Metodologie
 
-Pentru fiecare pagină publică (`/`, `/teritorii`, `/teritorii?limit=5`,
-`/teritorii/{id}`, `/date`, o pagină 404), am apăsat `Tab` repetat de la
-`document.body` și am comparat elementele efectiv atinse cu toate elementele
-focusabile vizibile din pagină (identificate prin identitate DOM, nu text —
-textul se poate repeta, ex. linkul "Registru" apare atât în navigare cât și în
-breadcrumb). Conținutul dintr-un `<details>` colaps a fost exclus din setul
-"așteptat": browserul îl exclude corect din ordinea de tab cât timp e închis —
-asta e comportament accesibil corect, nu un defect.
+Pentru fiecare pagină publică (`/`, `/?q=alba`, `/alba`, `/alba/alba-iulia`,
+`/date`, o pagină 404), am apăsat `Tab` repetat de la `document.body` și am
+comparat elementele efectiv atinse cu toate elementele focusabile vizibile din
+pagină (identificate prin identitate DOM, nu text — textul se poate repeta,
+ex. linkul "Registru" apare atât în navigare cât și în breadcrumb). Conținutul
+dintr-un `<details>` colaps a fost exclus din setul "așteptat": browserul îl
+exclude corect din ordinea de tab cât timp e închis — asta e comportament
+accesibil corect, nu un defect.
 
 Pentru fiecare element atins, am verificat și dacă are un indicator de focus
 vizibil (`:focus-visible` sau `outline` calculat, nu doar `outline: none`).
@@ -25,25 +25,32 @@ Verificări suplimentare:
   țintește `#main`;
 - formularul de căutare se poate completa și trimite integral din tastatură
   (`Tab` până la câmp, scriere, `Enter`), fără mouse;
-- lista de județe/sectoare (`<details>`) se poate deschide cu `Enter` pe
-  `<summary>` focusat, iar link-urile din interior devin focusabile după aceea.
+- lista de județe (`<details>`) se poate deschide cu `Enter` pe `<summary>`
+  focusat, iar link-urile din interior devin focusabile după aceea.
 
 ## Rezultate
 
+Re-verificat după mutarea căutării/listei pe `/` și trecerea la URL-uri
+ierarhice bazate pe slug (`/{județ}`, `/{județ}/{uat}`,
+`/{județ}/{uat}/{localitate}`) în locul UUID-urilor din `/teritorii/{id}`.
+
 | Pagină | Elemente focusabile | Toate atinse via Tab | Focus vizibil peste tot |
 |---|---|---|---|
-| `/` | 7 | ✅ | ✅ |
-| `/teritorii` | 59 (+ `<summary>`, nu era în selector) | ✅ | ✅ |
-| `/teritorii?limit=5` | 59 | ✅ | ✅ |
-| `/teritorii/{id}` | 11 | ✅ | ✅ |
+| `/` | 60 | ✅ | ✅ |
+| `/?q=alba` | 27 | ✅ | ✅ |
+| `/alba` | 83 | ✅ | ✅ |
+| `/alba/alba-iulia` | 11 | ✅ | ✅ |
 | `/date` | 16 | ✅ | ✅ |
 | 404 | 5 | ✅ | ✅ |
 
-Skip link: ✅ prima oprire de tab, țintește `#main`.
+Skip link: ✅ prima oprire de tab, țintește `#main`, pe toate paginile.
 Căutare doar din tastatură: ✅ `Enter` pe câmp trimite formularul corect
-(`GET /teritorii?q=...`).
+(`GET /?q=...`).
 `<details>` județe: ✅ se deschide cu `Enter` pe `<summary>`, conținutul devine
 focusabil imediat după.
+Redirect UUID → slug (`/teritorii/{id}` → `/{județ}/...`) și
+`/teritorii` → `/`: ✅ 308 permanent, fără pierdere de conținut pentru
+link-urile vechi deja distribuite.
 
 **Zero eșecuri reale.** Prima rulare a scriptului de verificare a raportat 4
 eșecuri, dar toate s-au dovedit artefacte ale scriptului însuși, nu probleme
