@@ -79,7 +79,7 @@ Registrul de adresare prevăzut de propunerea legislativă este un context disti
     └── tests/               # teste pgTAP
 ```
 
-Interfața publică (`/`, `/teritorii`, `/date`, `/versiuni`) și API-ul public (`/api/v1`) sunt construite și testate (căutare, ierarhie, subarbore, changelog, OpenAPI, rate limiting). Primul release SIRUTA stabil este public, iar contractul public v1 pentru consumatori este implementat în repository. Planul de control Supabase este dedicat și versionat prin migrații.
+Interfața publică (`/` — căutare și registru complet, `/{județ}/{uat}/{localitate}` — URL-uri umane pentru fiecare unitate teritorială, `/date`, `/versiuni`) și API-ul public (`/api/v1`) sunt construite și testate (căutare, ierarhie, subarbore, changelog, OpenAPI, rate limiting). Primul release SIRUTA stabil este public, iar contractul public v1 pentru consumatori este implementat în repository. Planul de control Supabase este dedicat și versionat prin migrații.
 
 ## Verificare locală
 

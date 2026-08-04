@@ -22,7 +22,6 @@ export default function RootLayout({ children }) {
             <a className="brand" href="/">
               Teritoriu.digital
             </a>
-            <a href="/teritorii">Registru</a>
             <a href="/date">Date și API</a>
             <a href="/versiuni">Versiuni</a>
           </nav>
