@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(38);
+select extensions.plan(39);
 
 select extensions.has_schema('registry', 'registry schema exists');
 select extensions.has_table('registry', 'territories', 'territories table exists');
@@ -56,8 +56,12 @@ select extensions.is(
 );
 select extensions.is(
   (select file_size_limit from storage.buckets where id = 'source-snapshots'),
-  5242880::bigint,
+  104857600::bigint,
   'source snapshot bucket enforces the acquisition size limit'
+);
+select extensions.ok(
+  (select allowed_mime_types @> array['application/json']::text[] from storage.buckets where id = 'source-snapshots'),
+  'source snapshot bucket accepts geometry payloads'
 );
 select extensions.ok(
   not has_schema_privilege('anon', 'registry', 'usage'),
