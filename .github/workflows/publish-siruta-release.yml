@@ -153,21 +153,14 @@ jobs:
           set -euo pipefail
           tag="siruta-${RELEASE_ID}"
           bundle=".artifacts/releases/${RELEASE_ID}"
-          files=(
-            SHA256SUMS
-            changelog.json
-            contract.json
-            contract.schema.json
-            manifest.json
-            release-manifest.schema.json
-            territories.csv
-            territories.json
-            territories.ndjson
-            territories.schema.json
-            territory-identifiers.csv
-            territory.schema.json
-            validation-report.json
-          )
+          # Derived from the bundle's own manifest.json rather than a fixed
+          # list, so an optional artifact (e.g. territory-geometries.geojson)
+          # is uploaded and verified automatically — see bundle-files.mjs.
+          mapfile -t files < <(node --input-type=module -e "
+            import { readFile } from 'node:fs/promises';
+            const manifest = JSON.parse(await readFile(process.argv[1], 'utf8'));
+            for (const name of ['manifest.json', 'SHA256SUMS', ...manifest.artifacts.map((a) => a.name)]) console.log(name);
+          " "${bundle}/manifest.json")
           if gh release view "${tag}" >/dev/null 2>&1; then
             draft=$(gh release view "${tag}" --json isDraft --jq .isDraft)
             if [[ "${draft}" == "true" ]]; then
@@ -205,11 +198,12 @@ jobs:
           bundle=".artifacts/releases/${RELEASE_ID}"
           downloaded=$(mktemp -d)
           gh release download "${tag}" --dir "${downloaded}"
-          for file in \
-            SHA256SUMS changelog.json contract.json contract.schema.json manifest.json \
-            release-manifest.schema.json territories.csv territories.json territories.ndjson \
-            territories.schema.json territory-identifiers.csv territory.schema.json \
-            validation-report.json; do
+          mapfile -t files < <(node --input-type=module -e "
+            import { readFile } from 'node:fs/promises';
+            const manifest = JSON.parse(await readFile(process.argv[1], 'utf8'));
+            for (const name of ['manifest.json', 'SHA256SUMS', ...manifest.artifacts.map((a) => a.name)]) console.log(name);
+          " "${bundle}/manifest.json")
+          for file in "${files[@]}"; do
             cmp --silent "${bundle}/${file}" "${downloaded}/${file}"
           done
       - name: Promote canonical registry and stable atomically
@@ -246,10 +240,11 @@ jobs:
           fi
           downloaded=$(mktemp -d)
           gh release download "${tag}" --dir "${downloaded}"
-          for file in \
-            SHA256SUMS changelog.json contract.json contract.schema.json manifest.json \
-            release-manifest.schema.json territories.csv territories.json territories.ndjson \
-            territories.schema.json territory-identifiers.csv territory.schema.json \
-            validation-report.json; do
+          mapfile -t files < <(node --input-type=module -e "
+            import { readFile } from 'node:fs/promises';
+            const manifest = JSON.parse(await readFile(process.argv[1], 'utf8'));
+            for (const name of ['manifest.json', 'SHA256SUMS', ...manifest.artifacts.map((a) => a.name)]) console.log(name);
+          " "${bundle}/manifest.json")
+          for file in "${files[@]}"; do
             cmp --silent "${bundle}/${file}" "${downloaded}/${file}"
           done
