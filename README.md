@@ -126,4 +126,4 @@ M1–M3 sunt demonstrate pe snapshotul oficial și pe release-ul public [`2026.0
 
 **M11 (hardening)** e parțial: Actions pinned pe SHA, `dependabot.yml`, SBOM în CI, gate `npm audit`, threat model documentat; branch protection și secret scanning rămân la deținătorul repo-ului.
 
-**M6 (geometrii ANCPI)** rămâne blocat pe accesul la sursa oficială din mediul curent de execuție automatizat. Schema internă rămâne neexpusă public.
+**M6 (geometrii ANCPI)** are pipeline-ul de achiziție implementat: sursă ArcGIS FeatureServer înregistrată cu licență CC BY 4.0 (aceeași cu SIRUTA), matching determinist cod SIRUTA → geometrie cu fallback pe nume scopat pe județ (eșuează închis la ambiguitate, nu ghicește), scriere versionată în `registry.territory_geometries` prin `npm run acquire:geometries`. Sursa ANCPI rămâne inaccesibilă din mediul interactiv de dezvoltare, dar accesul din runner-ele GitHub Actions a fost verificat direct (HTTP 200); rularea reală (dry-run + publish) încă nu a fost executată. Schema internă rămâne neexpusă public.

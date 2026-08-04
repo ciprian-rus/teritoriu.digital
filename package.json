@@ -13,6 +13,7 @@
     "test": "npm run check && npm run test:unit",
     "contract:verify": "node scripts/verify-release-bundle.mjs",
     "acquire:siruta": "node scripts/acquire-siruta.mjs",
+    "acquire:geometries": "node scripts/acquire-geometries.mjs",
     "fetch:siruta": "node scripts/fetch-siruta-snapshot.mjs",
     "candidate:siruta": "node scripts/build-siruta-candidate.mjs",
     "approve:siruta": "node scripts/approve-siruta-candidate.mjs",

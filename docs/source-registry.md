@@ -43,6 +43,8 @@ Limitări și atenționări:
 
 Discovery-ul inițial a identificat 3.186 geometrii cu coduri regăsite în SIRUTA: 3.180 UAT-uri plus cele 6 sectoare. Codul SIRUTA al municipiului București nu are o geometrie directă în stratul observat. Unirea sectoarelor poate produce o geometrie derivată, marcată explicit ca atare; nu este prezentată drept geometrie furnizată direct de ANCPI.
 
+Licența `CC BY 4.0` a fost confirmată direct din câmpul `licenseInfo` al item-ului ArcGIS Online (proprietar `ancpi_admin`, id `466b7199c19f4904831e14bc7f407af9`), nu presupusă. Pipeline-ul de achiziție (`config/sources/ancpi-reluat-geometries.json`, `packages/pipeline/src/geometry/`, `scripts/acquire-geometries.mjs`) face matching determinist SIRUTA→geometrie cu fallback pe nume scopat pe județ, eșuând închis (fără scriere) la ambiguitate sau la un număr de potriviri sub prag. FeatureServer-ul ANCPI e inaccesibil din sandbox-ul interactiv de dezvoltare al acestui proiect, dar accesul din runner-ele GitHub Actions a fost verificat direct.
+
 ## Surse viitoare
 
 Eurostat/GISCO, actele normative și alte nomenclatoare se adaugă numai după documentarea instituției, rolului, licenței, frecvenței, identificatorilor, limitărilor și regulilor de transformare.
