@@ -29,7 +29,7 @@ export function NationalMap({ counties }) {
 
   return (
     <figure className="nationalMap" aria-label="Harta interactivă a județelor României">
-      <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img" focusable="false">
+      <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`}>
         <title>Județele României</title>
         {items.map(({ county, geometry }) => (
           <a key={county.territoryId} href={county.path} aria-label={county.officialName}>
