@@ -14,10 +14,4 @@ jobs:
       - name: List FeatureServer layers
         run: |
           curl -sS "https://services-eu1.arcgis.com/tt6hwS9xmcvnRjQC/ArcGIS/rest/services/AU_Unit%C4%83%C8%9Bi_administrative/FeatureServer?f=json" \
-            | tee /tmp/featureserver.json \
-            | python3 -c "
-import json, sys
-data = json.load(sys.stdin)
-for layer in data.get('layers', []) + data.get('tables', []):
-    print(f\"id={layer.get('id')} name={layer.get('name')} type={layer.get('type', 'table')} geometryType={layer.get('geometryType', 'n/a')}\")
-"
+            | jq -r '(.layers // []) + (.tables // []) | .[] | "id=\(.id) name=\(.name) type=\(.type // "table") geometryType=\(.geometryType // "n/a")"'
