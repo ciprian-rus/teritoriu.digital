@@ -48,8 +48,12 @@ jobs:
           sudo apt-get install -y postgresql-common
           sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
           sudo apt-get install -y postgresql-client-17
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+      - name: Verify pg_dump and psql resolve to version 17
+        run: |
           pg_dump --version
           psql --version
+          pg_dump --version | grep -q ' 17\.' || { echo "pg_dump did not resolve to version 17 — Debian's update-alternatives only manages psql, not pg_dump" >&2; exit 1; }
       - name: Start local database
         run: supabase db start
       - name: Restore real production data into the local, throwaway instance
