@@ -23,7 +23,27 @@ Workflow-ul `Database` execută `scripts/restore-drill.sh` într-un mediu Supaba
 6. compară numărul de tabele și verifică santinela;
 7. șterge baza temporară.
 
-Exercițiul nu conține și nu accesează date de producție.
+Exercițiul nu conține și nu accesează date de producție — folosește o santinelă fabricată, nu confirmă restaurabilitatea datelor reale.
+
+## Drill real de producție
+
+Workflow-ul `Production restore drill` (`.github/workflows/production-restore-drill.yml`,
+`scripts/production-restore-drill.sh`) completează drill-ul de mai sus cu date
+reale: rulează `pg_dump --data-only` direct din producție (`SUPABASE_DB_URL`,
+strict citire — `pg_dump` nu poate scrie), restaurează rândurile reale ale
+schemei `registry` într-o instanță locală Supabase efemeră (pornită de la zero
+prin `supabase db start`, distrusă la finalul job-ului) și verifică: numărul
+de rânduri per tabel se potrivește cu producția, toate geometriile restaurate
+trec `gis.ST_IsValid`, iar `gis.ST_Area` calculează o arie pozitivă pentru
+fiecare. Nu scrie niciodată înapoi în producție.
+
+Scop limitat, explicit: acoperă doar rândurile schemei `registry`. Octeții
+fișierelor din Storage (arhivele brute SIRUTA/ANCPI, referențiate prin hash
+din `source_snapshots`) rămân acoperiți de backupurile administrate de
+Supabase însuși, nu de acest drill.
+
+Declanșare: manual (`workflow_dispatch`) oricând, plus programat trimestrial
+(1 ianuarie/aprilie/iulie/octombrie), conform cadenței de mai jos.
 
 ## Restaurare operațională
 
@@ -38,7 +58,7 @@ Exercițiul nu conține și nu accesează date de producție.
 
 ## Frecvență și dovezi
 
-- restore drill local: la orice schimbare a migrațiilor și cel puțin lunar;
-- verificarea backupului administrat: lunar;
-- exercițiu complet într-un proiect izolat: înainte de primul release stabil și trimestrial după lansare;
+- restore drill local (santinelă fabricată): la orice schimbare a migrațiilor și cel puțin lunar;
+- drill real de producție (date reale, `production-restore-drill.yml`): manual oricând, programat trimestrial (1 ian/apr/iul/oct) — înlocuiește obiectivul anterior "înainte de primul release stabil și trimestrial după lansare" cu o execuție automată, nu doar o intenție;
+- verificarea backupului administrat de Supabase (octeții din Storage): lunar;
 - dovezi păstrate: workflow, commit, punct de restaurare, durată, controale trecute, abateri și acțiuni corective.
