@@ -50,9 +50,11 @@ drepturi de admin să confirme sau să schimbe asta).
   (acquire/bootstrap/canonicalize/approve/mirror/publish/promote/verify), nu în
   `ci.yml`/`database.yml` (teste, fără secrete reale). Niciun secret nu ajunge în
   bundle-ul public, în loguri de build sau în browser.
-- **Rezidual**: rotația periodică a secretelor (`SUPABASE_SERVICE_ROLE_KEY`) nu e
-  automatizată — depinde de un proces manual, netestat încă prin exercițiu
-  (criteriu deschis, vezi #16 "rotație secrete").
+- **Rezidual**: rotația periodică a secretelor (`SUPABASE_SERVICE_ROLE_KEY`)
+  rămâne manuală, dar acum documentată printr-un runbook dedicat
+  (`docs/runbooks/incident-compromised-keys.md`, cadență de 6 luni plus
+  exercițiu anual simulat) — execuția reală a primului exercițiu rămâne de
+  demonstrat, nu doar procedura scrisă.
 
 ### 3. Compromitere supply-chain (dependențe npm sau GitHub Actions)
 - **Mitigare**: Actions pinned la commit SHA (nu tag-uri mutabile) în toate
@@ -102,8 +104,9 @@ drepturi de admin să confirme sau să schimbe asta).
   de dimensionat împotriva unui serviciu extern plătit (Upstash/Vercel KV).
 - **Fără WAF/CDN rate limiting** — depinde de platforma de găzduire, decizie
   neluată încă (nu e specific acestui cod).
-- **Rotația secretelor Supabase e manuală** — acceptat pentru moment, documentat
-  ca gol cunoscut, nu ca lucru rezolvat.
+- **Rotația secretelor Supabase e manuală** — procedura există acum
+  (`docs/runbooks/incident-compromised-keys.md`), dar execuția ei rămâne
+  manuală și primul exercițiu real e încă de demonstrat, nu doar documentat.
 
 Niciunul din riscurile de mai sus nu e clasificat drept critic/blocant pentru
 starea curentă a proiectului (pre-M12); toate sunt cunoscute, documentate și
