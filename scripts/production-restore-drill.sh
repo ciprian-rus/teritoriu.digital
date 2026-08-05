@@ -26,9 +26,18 @@ trap cleanup EXIT
 docker inspect "${container}" >/dev/null
 
 echo "Dumping real registry data from production (read-only)..."
+# --disable-triggers: registry.release_artifacts carries a BEFORE INSERT
+# trigger (published_artifacts_immutable) that rejects inserts for any
+# release already `published` — true for real production data by design
+# (ADR 0003). Restoring real rows via a plain data-only dump would fire
+# that trigger on COPY and abort the drill before it reaches the
+# verification step below. Safe to suppress here: this is a fresh restore
+# into an empty local schema, not a live table an application is writing
+# to concurrently.
 pg_dump "${SUPABASE_DB_URL}" \
   --schema=registry \
   --data-only \
+  --disable-triggers \
   --no-owner \
   --no-privileges \
   --file="${data_dump}"
