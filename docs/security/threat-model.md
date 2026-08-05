@@ -88,9 +88,14 @@ drepturi de admin să confirme sau să schimbe asta).
 
 ### 6. Corupere sau pierdere a bazei de control Supabase
 - **Mitigare**: backup/restore documentat și testat (`docs/runbooks/backup-restore.md`,
-  `scripts/restore-drill.sh` rulat în `database.yml`).
-- **Rezidual**: frecvența reală de exercițiu (trimestrial, conform #16) nu e
-  automatizată/urmărită încă printr-un calendar sau alertă.
+  `scripts/restore-drill.sh` rulat în `database.yml` cu o santinelă fabricată,
+  plus `scripts/production-restore-drill.sh`/`production-restore-drill.yml`
+  care restaurează date reale din producție într-o instanță locală efemeră și
+  verifică numărul de rânduri și validitatea PostGIS — programat trimestrial,
+  nu doar o intenție documentată).
+- **Rezidual**: octeții obiectelor din Storage (arhivele brute SIRUTA/ANCPI)
+  nu sunt acoperiți de acest drill, doar rândurile schemei `registry` —
+  rămân pe backupul administrat de Supabase, verificat manual lunar.
 
 ### 7. Rollback greșit sau `stable` pointat spre un release invalid
 - **Mitigare**: `move-stable-release.yml` rulează sub `environment: production`,
