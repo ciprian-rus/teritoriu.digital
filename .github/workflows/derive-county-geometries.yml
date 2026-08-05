@@ -1,0 +1,86 @@
+name: Derive county geometries
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/derive-county-geometries.yml"
+      - "package.json"
+      - "package-lock.json"
+      - "packages/pipeline/src/geometry/**"
+      - "scripts/derive-county-geometries.mjs"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Report which roots would be derived, or write them
+        required: true
+        default: dry-run
+        type: choice
+        options:
+          - dry-run
+          - publish
+
+permissions:
+  contents: read
+
+concurrency:
+  group: derive-county-geometries
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Use Node.js 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install
+        run: npm ci --ignore-scripts
+      - name: Unit and policy tests
+        run: npm test
+
+  dry-run:
+    if: github.event_name != 'pull_request'
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Use Node.js 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install
+        run: npm ci --ignore-scripts
+      - name: Report which counties would be derived
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: npm run derive:county-geometries -- --dry-run
+
+  publish:
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'publish' && github.ref == 'refs/heads/main'
+    needs: dry-run
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Use Node.js 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install
+        run: npm ci --ignore-scripts
+      - name: Derive and write county geometries
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: npm run derive:county-geometries -- --publish

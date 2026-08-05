@@ -92,3 +92,58 @@ export async function writeGeometries(client, snapshotId, matchedRows, options =
     });
   }
 }
+
+/**
+ * Writes one 'derived'/'original' geometry per given root (county or
+ * București), computed by union elsewhere (see
+ * derive-county-geometries.mjs). Same append-only convention as
+ * writeGeometries: never updates a prior row in place.
+ */
+export async function writeDerivedGeometries(client, rows, options = {}) {
+  await client.query("begin");
+  try {
+    for (const row of rows) {
+      const geometryJson = JSON.stringify(row.geometry);
+      const geometrySha256 = createHash("sha256").update(geometryJson).digest("hex");
+      await client.query(
+        `insert into registry.territory_geometries (
+           geometry_id, territory_id, geometry_kind, detail_level, geometry,
+           source_crs, source_snapshot_id, license_spdx, geometry_sha256,
+           derivation_method, valid_from
+         ) values (
+           $1::uuid, $2::uuid, 'derived', 'original',
+           gis.ST_SetSRID(gis.ST_Multi(gis.ST_GeomFromGeoJSON($3)), 4326),
+           'EPSG:4326', $4::uuid, $5, $6, $7, current_date
+         )`,
+        [
+          uuidV7(),
+          row.rootTerritoryId,
+          geometryJson,
+          row.snapshotId,
+          options.licenseSpdx ?? null,
+          geometrySha256,
+          options.derivationMethod
+        ]
+      );
+    }
+    await client.query(
+      `insert into registry.audit_events (
+         audit_event_id, event_type, entity_kind, entity_key, actor, payload
+       ) values ($1::uuid, 'territory_geometries_derived', 'derivation_method', $2, $3, $4::jsonb)`,
+      [
+        uuidV7(),
+        options.derivationMethod,
+        "pipeline:geometry-derivation",
+        JSON.stringify({ derivedCount: rows.length })
+      ]
+    );
+    await client.query("commit");
+  } catch (cause) {
+    await client.query("rollback").catch(() => {});
+    if (cause instanceof AcquisitionError) throw cause;
+    throw new AcquisitionError("GEOMETRY_DERIVATION_WRITE_FAILED", "Writing derived territory geometries failed", {
+      cause,
+      retryable: true
+    });
+  }
+}
