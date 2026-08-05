@@ -32,7 +32,11 @@ legale. Un consumator nu poate invoca acest document ca temei contractual.
   în `README.md`, nu doar un obiectiv.
 - **Măsurare**: `lib/release-source.mjs` citește exclusiv din GitHub Releases,
   cache-uit la nivel de instanță; nicio cerere a utilizatorului nu atinge
-  Supabase sau sursele externe.
+  Supabase sau sursele externe. `GET /api/health` expune acest lucru direct —
+  200 cu `releaseId`/`publishedAt`/`territoryCount` dacă release-ul verificat
+  se încarcă, 503 altfel — gândit pentru un monitor extern de uptime, nu ca
+  parte a contractului public v1 (fără intrare în OpenAPI, fără garanție de
+  versiune).
 - **Abatere**: orice regresie care introduce o dependență runtime de Supabase
   sau de o sursă externă în calea de citire publică e tratată ca defect
   blocant, nu ca degradare acceptabilă.
