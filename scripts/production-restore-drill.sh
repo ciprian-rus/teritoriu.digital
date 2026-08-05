@@ -26,24 +26,50 @@ trap cleanup EXIT
 docker inspect "${container}" >/dev/null
 
 echo "Dumping real registry data from production (read-only)..."
-# --disable-triggers: registry.release_artifacts carries a BEFORE INSERT
-# trigger (published_artifacts_immutable) that rejects inserts for any
-# release already `published` — true for real production data by design
-# (ADR 0003). Restoring real rows via a plain data-only dump would fire
-# that trigger on COPY and abort the drill before it reaches the
-# verification step below. Safe to suppress here: this is a fresh restore
-# into an empty local schema, not a live table an application is writing
-# to concurrently.
 pg_dump "${SUPABASE_DB_URL}" \
   --schema=registry \
   --data-only \
-  --disable-triggers \
   --no-owner \
   --no-privileges \
   --file="${data_dump}"
 
+# Three application-level guard triggers would otherwise fire during the
+# restore COPY and either reject it outright or make it impractically slow:
+#   - release_artifacts.published_artifacts_immutable (BEFORE INSERT) rejects
+#     any row whose release is already `published` — true for real production
+#     data by design (ADR 0003).
+#   - release_channels.release_channels_guard (BEFORE INSERT) re-validates
+#     the referenced release's status per row.
+#   - identity_decisions.identity_decisions_proposal_reuse_guard (BEFORE
+#     INSERT) takes an advisory lock and scans the whole table per row —
+#     fine for one live write, not for reloading ~85k historical rows.
+# `pg_dump --disable-triggers` was tried first and rejected: it emits
+# ALTER TABLE ... DISABLE TRIGGER ALL, which also touches the RI system
+# triggers that implement foreign keys — disabling those requires real
+# superuser, which Supabase deliberately doesn't grant even in local dev
+# (mirrors the hosted platform). Disabling these three named triggers by
+# name only needs table ownership, which the restoring role already has.
+# Foreign keys stay enforced throughout; the data is expected to already
+# satisfy them since it came from production.
+echo "Disabling guard triggers for the bulk restore (table-owner privilege, not superuser)..."
+docker exec "${container}" psql --username postgres --dbname postgres --set ON_ERROR_STOP=1 --command "
+  alter table registry.release_artifacts disable trigger published_artifacts_immutable;
+  alter table registry.release_channels disable trigger release_channels_guard;
+  alter table registry.identity_decisions disable trigger identity_decisions_proposal_reuse_guard;
+" >/dev/null
+
+reenable_guard_triggers() {
+  docker exec "${container}" psql --username postgres --dbname postgres --set ON_ERROR_STOP=1 --command "
+    alter table registry.release_artifacts enable trigger published_artifacts_immutable;
+    alter table registry.release_channels enable trigger release_channels_guard;
+    alter table registry.identity_decisions enable trigger identity_decisions_proposal_reuse_guard;
+  " >/dev/null
+}
+trap 'reenable_guard_triggers; cleanup' EXIT
+
 echo "Restoring into the local, throwaway Supabase instance..."
 docker exec --interactive "${container}" psql --username postgres --dbname postgres --set ON_ERROR_STOP=1 < "${data_dump}" >/dev/null
+reenable_guard_triggers
 
 echo "Verifying table counts against production..."
 tables="$(docker exec "${container}" psql --username postgres --dbname postgres --tuples-only --no-align --command "
