@@ -98,6 +98,14 @@ export async function writeGeometries(client, snapshotId, matchedRows, options =
  * București), computed by union elsewhere (see
  * derive-county-geometries.mjs). Same append-only convention as
  * writeGeometries: never updates a prior row in place.
+ *
+ * ST_MakeValid wraps ST_GeomFromGeoJSON here even though the SQL that
+ * produced row.geometry already validated its own output: round-tripping
+ * through GeoJSON text (ST_AsGeoJSON there, JSON here, ST_GeomFromGeoJSON
+ * on the way back in) can itself reintroduce a self-intersection from
+ * coordinate precision loss. Confirmed against real production data —
+ * geometries that were valid going out came back invalid on the way in
+ * without this wrap.
  */
 export async function writeDerivedGeometries(client, rows, options = {}) {
   await client.query("begin");
@@ -112,7 +120,7 @@ export async function writeDerivedGeometries(client, rows, options = {}) {
            derivation_method, valid_from
          ) values (
            $1::uuid, $2::uuid, 'derived', 'original',
-           gis.ST_SetSRID(gis.ST_Multi(gis.ST_GeomFromGeoJSON($3)), 4326),
+           gis.ST_SetSRID(gis.ST_Multi(gis.ST_MakeValid(gis.ST_GeomFromGeoJSON($3))), 4326),
            'EPSG:4326', $4::uuid, $5, $6, $7, current_date
          )`,
         [
