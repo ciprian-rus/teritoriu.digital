@@ -58,6 +58,20 @@ test("readCountyUnionCandidates maps rows and parses the union geometry", async 
   ]);
 });
 
+test("readCountyUnionCandidates re-validates the union result, not just its inputs", async () => {
+  // Regression guard: unioning already-valid child polygons along shared
+  // borders can itself produce a self-intersecting result (confirmed against
+  // real production data — 31/42 derived counties were ST_IsValid-false
+  // before this second wrap was added). ST_MakeValid must appear twice:
+  // once around each child geometry, once around the union's own output.
+  const client = clientMock({ rows: [] });
+  await readCountyUnionCandidates(client);
+  const sqlWithoutComments = client.calls[0].sql.replace(/--.*$/gm, "");
+  const makeValidCalls = sqlWithoutComments.match(/ST_MakeValid/g) ?? [];
+  assert.equal(makeValidCalls.length, 2, "ST_MakeValid must wrap both the union inputs and its output");
+  assert.match(sqlWithoutComments, /ST_MakeValid\(gis\.ST_Union\(gis\.ST_MakeValid/);
+});
+
 test("selectDerivableCounties accepts a root with every child present from one snapshot", () => {
   const { derivable, skipped } = selectDerivableCounties([candidate()]);
   assert.equal(skipped.length, 0);
