@@ -117,6 +117,12 @@ test("writeDerivedGeometries inserts one derived row per root plus an audit even
   assert.equal(statements[0], "begin");
   assert.match(statements[1], /geometry_kind, detail_level, geometry/);
   assert.match(statements[1], /'derived', 'original'/);
+  // Regression guard: the GeoJSON round-trip (ST_AsGeoJSON in the derive
+  // query, JSON here, ST_GeomFromGeoJSON on the way back in) can itself
+  // reintroduce a self-intersection from coordinate precision loss, even
+  // when the geometry going out was already valid — confirmed against real
+  // production data. ST_MakeValid must wrap ST_GeomFromGeoJSON on insert.
+  assert.match(statements[1], /ST_MakeValid\(gis\.ST_GeomFromGeoJSON/);
   assert.match(statements[2], /territory_geometries_derived/);
   assert.equal(statements[3], "commit");
 });
