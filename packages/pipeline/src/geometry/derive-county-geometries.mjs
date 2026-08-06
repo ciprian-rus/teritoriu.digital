@@ -41,7 +41,15 @@ const CANDIDATE_QUERY = `
     -- self-intersecting or under-pointed result (a GEOS/float-precision
     -- artifact, not a sign the inputs were bad) — confirmed in production,
     -- where this was missing and left 31/42 derived counties ST_IsValid-false.
-    gis.ST_AsGeoJSON(gis.ST_Multi(gis.ST_MakeValid(gis.ST_Union(gis.ST_MakeValid(lg.geometry))))) as union_geojson
+    -- ST_MakeValid on a broken union can itself return a GEOMETRYCOLLECTION
+    -- (stray points/lines alongside the polygon, from the same defect) —
+    -- also confirmed in production, where inserting that collection into a
+    -- strictly-typed multipolygon column failed outright. ST_CollectionExtract
+    -- (type 3 = polygon) keeps only the polygonal parts before the final
+    -- ST_Multi; the dropped fragments are zero-area artifacts, not real area.
+    gis.ST_AsGeoJSON(
+      gis.ST_Multi(gis.ST_CollectionExtract(gis.ST_MakeValid(gis.ST_Union(gis.ST_MakeValid(lg.geometry))), 3))
+    ) as union_geojson
   from leaf_candidates lc
   left join latest_geometry lg on lg.territory_id = lc.territory_id
   group by lc.county_territory_id

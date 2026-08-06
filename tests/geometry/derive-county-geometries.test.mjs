@@ -70,6 +70,12 @@ test("readCountyUnionCandidates re-validates the union result, not just its inpu
   const makeValidCalls = sqlWithoutComments.match(/ST_MakeValid/g) ?? [];
   assert.equal(makeValidCalls.length, 2, "ST_MakeValid must wrap both the union inputs and its output");
   assert.match(sqlWithoutComments, /ST_MakeValid\(gis\.ST_Union\(gis\.ST_MakeValid/);
+  // Regression guard: ST_MakeValid on a broken union can return a
+  // GEOMETRYCOLLECTION (stray points/lines alongside the polygon), which a
+  // strictly-typed multipolygon column rejects outright — confirmed against
+  // real production data, where the write itself failed, not just a later
+  // ST_IsValid check. ST_CollectionExtract(..., 3) keeps only the polygons.
+  assert.match(sqlWithoutComments, /ST_CollectionExtract\(gis\.ST_MakeValid\(gis\.ST_Union.*,\s*3\)/s);
 });
 
 test("selectDerivableCounties accepts a root with every child present from one snapshot", () => {
@@ -123,6 +129,10 @@ test("writeDerivedGeometries inserts one derived row per root plus an audit even
   // when the geometry going out was already valid — confirmed against real
   // production data. ST_MakeValid must wrap ST_GeomFromGeoJSON on insert.
   assert.match(statements[1], /ST_MakeValid\(gis\.ST_GeomFromGeoJSON/);
+  // Same GEOMETRYCOLLECTION guard as the derive query: without
+  // ST_CollectionExtract, a broken input's ST_MakeValid result can fail the
+  // insert outright against the strictly-typed multipolygon column.
+  assert.match(statements[1], /ST_CollectionExtract\(gis\.ST_MakeValid\(gis\.ST_GeomFromGeoJSON.*,\s*3\)/s);
   assert.match(statements[2], /territory_geometries_derived/);
   assert.equal(statements[3], "commit");
 });
