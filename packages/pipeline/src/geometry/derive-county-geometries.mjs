@@ -36,7 +36,12 @@ const CANDIDATE_QUERY = `
     count(*)::int as expected_count,
     count(lg.territory_id)::int as actual_count,
     array_remove(array_agg(distinct lg.source_snapshot_id::text), null) as snapshot_ids,
-    gis.ST_AsGeoJSON(gis.ST_Multi(gis.ST_Union(gis.ST_MakeValid(lg.geometry)))) as union_geojson
+    -- The outer ST_MakeValid isn't redundant with the inner one: unioning
+    -- already-valid child polygons along shared borders can still produce a
+    -- self-intersecting or under-pointed result (a GEOS/float-precision
+    -- artifact, not a sign the inputs were bad) — confirmed in production,
+    -- where this was missing and left 31/42 derived counties ST_IsValid-false.
+    gis.ST_AsGeoJSON(gis.ST_Multi(gis.ST_MakeValid(gis.ST_Union(gis.ST_MakeValid(lg.geometry))))) as union_geojson
   from leaf_candidates lc
   left join latest_geometry lg on lg.territory_id = lc.territory_id
   group by lc.county_territory_id
