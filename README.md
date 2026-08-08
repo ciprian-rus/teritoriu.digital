@@ -118,6 +118,8 @@ Datele publicate în fiecare release (`territories.json`, `territories.csv`, NDJ
 
 ## Stare
 
+**Site-ul și API-ul public sunt live la [teritoriu.digital](https://teritoriu.digital)**, deployate pe Vercel din codul acestui repository.
+
 M1–M3 sunt demonstrate pe snapshotul oficial și pe release-ul public [`2026.07.23.3`](https://github.com/ciprian-rus/teritoriu.digital/releases/tag/siruta-2026.07.23.3), care publică și contractul public v1 (`1.0.0`, 13 artefacte, `stable` curent; `.2` și `.1` rămân disponibile pentru rollback). Contractul producător este închis (#8).
 
 **M4 (site) și M5 (API) sunt finalizate**: căutare/listare/detaliu accesibile, `/api/v1` complet (listare, ierarhie, subarbore, changelog), OpenAPI documentat cu exemple validate, rate limiting, audit axe + Lighthouse (98-100), verificare stratificată pe toate cele 42 județe/3181 UAT, navigare completă doar-tastatură, benchmark de sarcină și fuzz testing pe parametri.
