@@ -21,7 +21,7 @@ Aplicațiile consumatoare importă o versiune explicită în propriul read-model
 
 ## Limite
 
-MVP-ul acoperă registrul teritorial. Registrul de adresare este un context separat care va referi `territory_id`, dar străzile, numerele administrative și adresele nu intră în această schemă inițială.
+MVP-ul acoperă registrul teritorial. Registrul de adresare este un context separat care va referi `territory_id`, dar străzile, numerele administrative și adresele nu intră în această schemă inițială. Actualizat prin ADR 0004: excluderea devine condiționată de existența unei surse reale verificate (RENNS/ANCPI), nu mai este absolută.
 
 Supabase nu conferă statut juridic datelor și nu înlocuiește desemnarea prin lege sau hotărâre a administratorului unui registru oficial.
 
