@@ -175,7 +175,7 @@ test("publishes a machine-readable v1 contract and the six required territory fi
   assert.equal(verification.report.accepted, 6);
   assert.equal(verification.report.rejected, 0);
   assert.equal(verification.report.conflicts, 0);
-  assert.equal(verification.contract.contractVersion, "1.1.0");
+  assert.equal(verification.contract.contractVersion, "1.2.0");
   assert.deepEqual(
     new Set(verification.payload.territories.map((item) => item.territoryType)),
     new Set(["county", "municipality", "city", "commune", "sector", "component_locality"])

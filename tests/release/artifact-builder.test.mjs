@@ -95,8 +95,8 @@ test("builds byte-identical JSON, CSV, manifest, changelog and checksums", () =>
   assert.equal(verification.manifest.counts.territories, 3);
   assert.equal(verification.manifest.quality.status, "passed_with_warnings");
   assert.equal(verification.manifest.license.spdx, "CC-BY-4.0");
-  assert.equal(verification.contract.contractVersion, "1.1.0");
-  assert.equal(verification.payload.contractVersion, "1.1.0");
+  assert.equal(verification.contract.contractVersion, "1.2.0");
+  assert.equal(verification.payload.contractVersion, "1.2.0");
   const csv = first.artifacts.get("territories.csv").toString("utf8");
   assert.match(csv, /"JUDEȚUL TEST"/u);
   assert.equal(csv.endsWith("\n"), true);
@@ -217,7 +217,7 @@ test("includes the optional territory-geometries artifact only when geometries a
   const contract = JSON.parse(withGeometries.artifacts.get("contract.json"));
   const geometryArtifact = contract.artifacts.find((artifact) => artifact.purpose === "territory-geometries");
   assert.equal(geometryArtifact.required, false);
-  assert.equal(contract.contractVersion, "1.1.0");
+  assert.equal(contract.contractVersion, "1.2.0");
 
   const verification = verifyReleaseBundle(withGeometries);
   assert.equal(verification.manifest.counts.territories, 3);
