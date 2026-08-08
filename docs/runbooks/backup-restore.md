@@ -33,9 +33,11 @@ reale: rulează `pg_dump --data-only` direct din producție (`SUPABASE_DB_URL`,
 strict citire — `pg_dump` nu poate scrie), restaurează rândurile reale ale
 schemei `registry` într-o instanță locală Supabase efemeră (pornită de la zero
 prin `supabase db start`, distrusă la finalul job-ului) și verifică: numărul
-de rânduri per tabel se potrivește cu producția, toate geometriile restaurate
-trec `gis.ST_IsValid`, iar `gis.ST_Area` calculează o arie pozitivă pentru
-fiecare. Nu scrie niciodată înapoi în producție.
+de rânduri per tabel se potrivește cu producția, toate geometriile *curente*
+(cea mai recentă per teritoriu/tip, nu tot istoricul append-only — rânduri
+vechi, înlocuite, pot rămâne intenționat invalide ca parte a istoricului
+onest) trec `gis.ST_IsValid`, iar `gis.ST_Area` calculează o arie pozitivă
+pentru fiecare. Nu scrie niciodată înapoi în producție.
 
 Scop limitat, explicit: acoperă doar rândurile schemei `registry`. Octeții
 fișierelor din Storage (arhivele brute SIRUTA/ANCPI, referențiate prin hash

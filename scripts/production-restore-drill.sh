@@ -89,24 +89,40 @@ for table in ${tables}; do
 done
 
 echo "Verifying PostGIS functions on real restored geometry..."
+# Scoped to the current row per (territory_id, geometry_kind), the same
+# "current view over an immutable history" convention used everywhere else
+# (write-geometries.mjs, derive-county-geometries.mjs) — not every row ever
+# written. The append-only model deliberately keeps superseded rows,
+# including ones that were valid geometry at the time but are now known-bad
+# and already replaced (see #84-#86); checking full history here would flag
+# that intentionally-preserved past, not the data this registry serves today.
+CURRENT_GEOMETRY_CTE="
+  with current_geometries as (
+    select distinct on (territory_id, geometry_kind) territory_id, geometry_kind, geometry
+    from registry.territory_geometries
+    order by territory_id, geometry_kind, created_at desc
+  )
+"
 invalid_geometries="$(docker exec "${container}" psql --username postgres --dbname postgres --tuples-only --no-align --command "
-  select count(*) from registry.territory_geometries where not gis.ST_IsValid(geometry);
+  ${CURRENT_GEOMETRY_CTE}
+  select count(*) from current_geometries where not gis.ST_IsValid(geometry);
 ")"
 if [[ "${invalid_geometries}" != "0" ]]; then
-  echo "MISMATCH: ${invalid_geometries} invalid restored geometries" >&2
+  echo "MISMATCH: ${invalid_geometries} invalid current restored geometries" >&2
   mismatch=1
 else
-  echo "OK: all restored geometries pass gis.ST_IsValid"
+  echo "OK: all current restored geometries pass gis.ST_IsValid"
 fi
 
 sample_geometry_check="$(docker exec "${container}" psql --username postgres --dbname postgres --tuples-only --no-align --command "
-  select count(*) from registry.territory_geometries where gis.ST_Area(geometry) <= 0;
+  ${CURRENT_GEOMETRY_CTE}
+  select count(*) from current_geometries where gis.ST_Area(geometry) <= 0;
 ")"
 if [[ "${sample_geometry_check}" != "0" ]]; then
-  echo "MISMATCH: ${sample_geometry_check} restored geometries with non-positive area" >&2
+  echo "MISMATCH: ${sample_geometry_check} current restored geometries with non-positive area" >&2
   mismatch=1
 else
-  echo "OK: gis.ST_Area computes a positive area for every restored geometry"
+  echo "OK: gis.ST_Area computes a positive area for every current restored geometry"
 fi
 
 if [[ "${mismatch}" == "1" ]]; then
