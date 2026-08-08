@@ -39,6 +39,8 @@ vechi, înlocuite, pot rămâne intenționat invalide ca parte a istoricului
 onest) trec `gis.ST_IsValid`, iar `gis.ST_Area` calculează o arie pozitivă
 pentru fiecare. Nu scrie niciodată înapoi în producție.
 
+„Curentă" e rezolvată în doi pași, aceeași convenție ca `resolveGeometriesByTerritoryId` din `lib/release-source.mjs` (codul care decide ce serveşte de fapt site-ul/API-ul): mai întâi cel mai recent rând per `(territory_id, geometry_kind)`, apoi, dintre acestea, geometria pe care registrul o servește azi per teritoriu — `source_corrected` (corecție tehnică de validitate peste un poligon `source` ANCPI invalid, vezi `scripts/correct-source-geometries.mjs`) câștigă în fața lui `source` pentru același teritoriu. Rândul `source` original rămâne neschimbat în bază; fără acest al doilea pas, drill-ul ar semnala la nesfârșit acel rând intenționat păstrat, chiar și după ce corecția pe care contractul public o servește deja există.
+
 Scop limitat, explicit: acoperă doar rândurile schemei `registry`. Octeții
 fișierelor din Storage (arhivele brute SIRUTA/ANCPI, referențiate prin hash
 din `source_snapshots`) rămân acoperiți de backupurile administrate de
