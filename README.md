@@ -44,7 +44,7 @@ Supabase este un proiect dedicat `teritoriu-digital`. Cheia secretă rămâne ex
 - geometrii cu proveniență și licență clare;
 - snapshoturi, validări și release-uri.
 
-Registrul de adresare prevăzut de propunerea legislativă este un context distinct. Teritoriu.digital îi poate furniza stratul teritorial și contractele de referențiere, dar nu va introduce străzi, numere administrative sau adrese în MVP.
+Registrul de adresare prevăzut de propunerea legislativă este un context distinct, dar nu mai este exclus necondiționat: Teritoriu.digital își extinde domeniul spre el (ADR 0004), fără să dubleze RENNS — Registrul Electronic Național al Nomenclaturii Stradale, deja înființat prin HG 777/2016 și administrat de ANCPI. Schema de adresare (referă `territory_id`, identificator extern CUA după modelul deja folosit pentru codul SIRUTA) rămâne definită, dar neingerată cu date reale până la verificarea directă a unui mecanism real de acces la datele RENNS — vezi M13 din roadmap.
 
 ## Principii nenegociabile
 
