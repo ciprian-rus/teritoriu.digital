@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://teritoriu.digital/schemas/territory-geometries/1.0.0",
+  "$id": "https://teritoriu.digital/schemas/territory-geometries/1.1.0",
   "title": "Geometrii teritoriale",
   "type": "object",
   "additionalProperties": false,
@@ -45,7 +45,7 @@
                 "format": "uuid",
                 "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
               },
-              "geometryKind": { "type": "string", "enum": ["source", "derived", "simplified"] },
+              "geometryKind": { "type": "string", "enum": ["source", "derived", "simplified", "source_corrected"] },
               "detailLevel": { "type": "string", "enum": ["original", "high", "medium", "low"] },
               "sourceSnapshotId": {
                 "type": "string",

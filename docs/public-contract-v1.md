@@ -8,6 +8,8 @@ Contractul public a început cu `contractVersion = 1.0.0`. Release-ul SIRUTA `20
 
 De la `contractVersion = 1.1.0`, contractul admite opțional geometriile teritoriale (M6) ca artefact aditiv — vezi „Geometrii teritoriale (opțional)" mai jos. Un release fără geometrii disponibile rămâne complet valid: `contractVersion` crește pentru că *schema* contractului permite acum un activ opțional, nu pentru că fiecare release trebuie să-l includă.
 
+De la `contractVersion = 1.2.0`, `properties.geometryKind` admite aditiv valoarea `source_corrected` — o corecție tehnică de validitate (`ST_MakeValid`) peste o geometrie `source` publicată invalid de ANCPI. Nu înlocuiește rândul `source` original; ambele rămân în `territory-geometries.geojson`, ca `Feature`-uri distincte pentru același `territoryId`.
+
 ## Bundle obligatoriu
 
 | Fișier | Rol |
@@ -34,10 +36,12 @@ Dacă release-ul include geometrii (M6), bundle-ul conține și:
 
 | Fișier | Rol |
 |---|---|
-| `territory-geometries.geojson` | `FeatureCollection` GeoJSON, un `Feature` per teritoriu cu geometrie disponibilă |
+| `territory-geometries.geojson` | `FeatureCollection` GeoJSON, cel puțin un `Feature` per teritoriu cu geometrie disponibilă |
 | `territory-geometries.schema.json` | JSON Schema pentru `territory-geometries.geojson` |
 
-Fiecare `Feature` are `properties.territoryId` egal cu un `territoryId` din `territories.json` al aceluiași release — un consumator respinge fail-closed orice geometrie care ar referi un teritoriu din afara release-ului. `properties.geometryKind` (`source`/`derived`/`simplified`) și `properties.detailLevel` (`original`/`high`/`medium`/`low`) descriu proveniența și nivelul de detaliu; `properties.sourceSnapshotId` leagă geometria de snapshotul ANCPI din care provine. Licența (`license`, la nivelul întregului `FeatureCollection`) e declarată separat de `manifest.license` (SIRUTA), pentru că sursa e alta (ANCPI RELUAT), chiar dacă ambele sunt `CC BY 4.0`.
+Fiecare `Feature` are `properties.territoryId` egal cu un `territoryId` din `territories.json` al aceluiași release — un consumator respinge fail-closed orice geometrie care ar referi un teritoriu din afara release-ului. `properties.geometryKind` (`source`/`derived`/`simplified`/`source_corrected`) și `properties.detailLevel` (`original`/`high`/`medium`/`low`) descriu proveniența și nivelul de detaliu; `properties.sourceSnapshotId` leagă geometria de snapshotul ANCPI din care provine. Licența (`license`, la nivelul întregului `FeatureCollection`) e declarată separat de `manifest.license` (SIRUTA), pentru că sursa e alta (ANCPI RELUAT), chiar dacă ambele sunt `CC BY 4.0`.
+
+Un `territoryId` poate apărea în mai mult de un `Feature`: dacă geometria `source` publicată de ANCPI e invalidă geometric, un `Feature` suplimentar cu `geometryKind = source_corrected` conține corecția tehnică (`ST_MakeValid`), fără să înlocuiască originalul. Un consumator care are nevoie de exact o geometrie per teritoriu preferă `source_corrected` peste `source` pentru același `territoryId`; altfel primește ambele și alege proveniența care îi convine.
 
 Ambele fișiere sunt declarate în `contract.json` cu `required: false` — un release fără geometrii disponibile pur și simplu nu le declară și nu le include; nu e o valoare lipsă sau un placeholder gol.
 

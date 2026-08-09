@@ -19,7 +19,7 @@ export const PUBLIC_CONTRACT_NAME = "teritoriu.digital/siruta-release";
 // — vezi docs/public-contract-v1.md. Un release fără geometrii disponibile
 // nu-l declară deloc în contract.artifacts; nu e o schimbare retroactivă
 // pentru niciun release deja publicat.
-export const PUBLIC_CONTRACT_VERSION = "1.1.0";
+export const PUBLIC_CONTRACT_VERSION = "1.2.0";
 const RELEASE_ID = /^[0-9]{4}\.[0-9]{2}\.[0-9]{2}\.[1-9][0-9]*$/;
 const SEMVER = /^[0-9]+\.[0-9]+\.[0-9]+$/;
 const UUID_V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;

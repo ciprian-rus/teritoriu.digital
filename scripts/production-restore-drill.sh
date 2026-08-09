@@ -89,18 +89,32 @@ for table in ${tables}; do
 done
 
 echo "Verifying PostGIS functions on real restored geometry..."
-# Scoped to the current row per (territory_id, geometry_kind), the same
-# "current view over an immutable history" convention used everywhere else
-# (write-geometries.mjs, derive-county-geometries.mjs) — not every row ever
-# written. The append-only model deliberately keeps superseded rows,
-# including ones that were valid geometry at the time but are now known-bad
-# and already replaced (see #84-#86); checking full history here would flag
-# that intentionally-preserved past, not the data this registry serves today.
+# Two-stage resolution, same convention as resolveGeometriesByTerritoryId in
+# lib/release-source.mjs (the code that decides what the site/API actually
+# serve):
+#   1. latest_per_kind: the current row per (territory_id, geometry_kind) —
+#      the append-only "current view over immutable history" convention used
+#      everywhere else (write-geometries.mjs, derive-county-geometries.mjs).
+#      Superseded rows, including ones now known-bad and already replaced
+#      (see #84-#86), deliberately stay in history and must not be flagged.
+#   2. current_geometries: among those, the one geometry per territory this
+#      registry actually serves today — 'source_corrected' (a technical
+#      ST_MakeValid fix over an ANCPI-published 'source' polygon that was
+#      itself invalid, see correct-source-geometries.mjs) wins over 'source'
+#      for the same territory. Without this second stage, a territory with
+#      both rows would keep failing this check forever on its unmodified,
+#      deliberately-preserved 'source' row, even after the correction the
+#      public contract already serves exists.
 CURRENT_GEOMETRY_CTE="
-  with current_geometries as (
+  with latest_per_kind as (
     select distinct on (territory_id, geometry_kind) territory_id, geometry_kind, geometry
     from registry.territory_geometries
     order by territory_id, geometry_kind, created_at desc
+  ),
+  current_geometries as (
+    select distinct on (territory_id) territory_id, geometry_kind, geometry
+    from latest_per_kind
+    order by territory_id, (geometry_kind = 'source_corrected') desc
   )
 "
 invalid_geometries="$(docker exec "${container}" psql --username postgres --dbname postgres --tuples-only --no-align --command "

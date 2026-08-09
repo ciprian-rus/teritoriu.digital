@@ -45,6 +45,8 @@ Discovery-ul inițial a identificat 3.186 geometrii cu coduri regăsite în SIRU
 
 Licența `CC BY 4.0` a fost confirmată direct din câmpul `licenseInfo` al item-ului ArcGIS Online (proprietar `ancpi_admin`, id `466b7199c19f4904831e14bc7f407af9`), nu presupusă. Pipeline-ul de achiziție (`config/sources/ancpi-reluat-geometries.json`, `packages/pipeline/src/geometry/`, `scripts/acquire-geometries.mjs`) face matching determinist SIRUTA→geometrie cu fallback pe nume scopat pe județ, eșuând închis (fără scriere) la ambiguitate sau la un număr de potriviri sub prag. FeatureServer-ul ANCPI e inaccesibil din sandbox-ul interactiv de dezvoltare al acestui proiect, dar accesul din runner-ele GitHub Actions a fost verificat direct.
 
+34 din cele 3.186 poligoane publicate de ANCPI (confirmat direct contra producției, `gis.ST_IsValid`) sunt geometric invalide (auto-intersecții) — un defect al sursei înseși, nu al pipeline-ului de achiziție, care le stochează neschimbate (`geometry_kind: source`). `scripts/correct-source-geometries.mjs` scrie o corecție tehnică separată (`geometry_kind: source_corrected`, `gis.ST_MakeValid`) fără să înlocuiască rândul original — corecția e etichetată explicit ca atare, nu prezentată drept geometria neschimbată a ANCPI (vezi `docs/public-contract-v1.md`).
+
 ## Surse viitoare
 
 Eurostat/GISCO, actele normative și alte nomenclatoare se adaugă numai după documentarea instituției, rolului, licenței, frecvenței, identificatorilor, limitărilor și regulilor de transformare.
