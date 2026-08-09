@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { test } from "node:test";
 
 import {
@@ -16,7 +17,15 @@ function clientMock(options = {}) {
       if (options.failOn && sql.includes(options.failOn)) throw new Error("database failure");
       if (options.isValidByCall) {
         const index = calls.filter((call) => call.sql.includes("is_valid")).length - 1;
-        return { rows: [{ is_valid: options.isValidByCall[index] }] };
+        const isValid = options.isValidByCall[index];
+        return {
+          rows: [
+            {
+              is_valid: isValid,
+              corrected_geojson: isValid ? JSON.stringify({ type: "MultiPolygon", coordinates: [[[[1, 2]]]] }) : null
+            }
+          ]
+        };
       }
       if (options.rows) return { rows: options.rows };
       return { rows: [] };
@@ -98,6 +107,20 @@ test("writeSourceCorrections defaults to the documented correction method", asyn
   await writeSourceCorrections(client, [invalidRow()]);
   const insertParameters = client.calls[2].parameters;
   assert.equal(insertParameters.at(-1), SOURCE_VALIDITY_CORRECTION_METHOD);
+});
+
+test("writeSourceCorrections hashes the corrected geometry actually stored, not the still-invalid original", async () => {
+  const client = clientMock({ isValidByCall: [true] });
+  await writeSourceCorrections(client, [invalidRow()]);
+  // Insert parameter order (see the module): ..., licenseSpdx, geometrySha256, derivationMethod.
+  const geometrySha256 = client.calls[2].parameters.at(-2);
+  const correctedGeojson = JSON.stringify({ type: "MultiPolygon", coordinates: [[[[1, 2]]]] });
+  const originalGeojson = JSON.stringify(invalidRow().geometry);
+  assert.notEqual(correctedGeojson, originalGeojson, "test fixture sanity: original and corrected must differ");
+  const expectedHash = createHash("sha256").update(correctedGeojson).digest("hex");
+  const wrongHash = createHash("sha256").update(originalGeojson).digest("hex");
+  assert.equal(geometrySha256, expectedHash);
+  assert.notEqual(geometrySha256, wrongHash);
 });
 
 test("writeSourceCorrections fails closed per row: a still-invalid correction is reported, not written", async () => {

@@ -74,14 +74,23 @@ export async function writeSourceCorrections(client, rows, options = {}) {
         `select
            gis.ST_IsValid(
              gis.ST_Multi(gis.ST_CollectionExtract(gis.ST_MakeValid(gis.ST_GeomFromGeoJSON($1)), 3))
-           ) as is_valid`,
+           ) as is_valid,
+           gis.ST_AsGeoJSON(
+             gis.ST_Multi(gis.ST_CollectionExtract(gis.ST_MakeValid(gis.ST_GeomFromGeoJSON($1)), 3))
+           ) as corrected_geojson`,
         [geometryJson]
       );
       if (!check.rows[0].is_valid) {
         stillInvalid.push(row.territoryId);
         continue;
       }
-      const geometrySha256 = createHash("sha256").update(geometryJson).digest("hex");
+      // Hashes the corrected geometry actually being stored, not the
+      // still-invalid original read from 'source' — geometry_sha256 must
+      // describe this row's own content. The insert below re-derives the
+      // identical geometry independently (same deterministic transform,
+      // same input) rather than trusting this computation, per the
+      // project's write-boundary discipline, so the two never diverge.
+      const geometrySha256 = createHash("sha256").update(check.rows[0].corrected_geojson).digest("hex");
       await client.query(
         `insert into registry.territory_geometries (
            geometry_id, territory_id, geometry_kind, detail_level, geometry,
