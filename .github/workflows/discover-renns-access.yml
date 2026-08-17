@@ -1,0 +1,61 @@
+name: Discover RENNS access
+
+# One-off discovery, not a recurring source: checks whether RENNS (the
+# state's existing street-nomenclature system, HG 777/2016, administered by
+# ANCPI — see docs/adr/0004-conditional-address-registry-extension.md)
+# exposes any real, reachable, programmatic access — WSDL/XML web services,
+# an INSPIRE WFS/WMS endpoint, or a documented open dataset — the same
+# question already answered for SIRUTA and ANCPI's geometry FeatureServer
+# in docs/source-registry.md before any acquisition code was written for
+# them. Read-only GETs against public pages; writes nothing, needs no
+# secrets. The interactive development sandbox's network egress proxy
+# blocks these domains outright, so this can only run from a GitHub
+# Actions runner — see docs/source-registry.md's ANCPI FeatureServer note
+# for the same limitation.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe candidate RENNS/INSPIRE endpoints
+        run: |
+          set -uo pipefail
+
+          probe() {
+            local label="$1" url="$2"
+            echo "=== ${label} ==="
+            echo "URL: ${url}"
+            local headers
+            headers="$(curl -sS -m 20 -o /tmp/probe-body -D - \
+              -A "teritoriu.digital-discovery/1.0 (+https://github.com/ciprian-rus/teritoriu.digital)" \
+              "${url}" 2>&1)"
+            local exit_code=$?
+            if [[ ${exit_code} -ne 0 ]]; then
+              echo "UNREACHABLE (curl exit ${exit_code})"
+              echo "${headers}"
+            else
+              echo "${headers}" | head -n 5
+              echo "--- body (first 1000 bytes) ---"
+              head -c 1000 /tmp/probe-body
+              echo
+            fi
+            echo
+          }
+
+          probe "RENNS portal (root)" "https://renns.ancpi.ro/"
+          probe "RENNS public consultation app" "http://renns.ancpi.ro/renns-public/"
+          probe "ANCPI RENNS info page" "https://www.ancpi.ro/en/renns/"
+          probe "geoportal.gov.ro INSPIRE metadata item (Adrese RENNS)" \
+            "http://geoportal.gov.ro/metadata_catalog/rest/metadata/item/8ea8f0d32cb04150a716f1e79bb27cef/html"
+          probe "EU INSPIRE Geoportal record (Adrese RENNS)" \
+            "https://inspire-geoportal.ec.europa.eu/srv/api/records/%7BAA3A39D5-B7D6-4297-8CB9-6BE9E470A1BE%7D?language=all"
+
+          echo "Discovery complete. This job never fails on an unreachable endpoint —"
+          echo "read the log above for what each probe actually returned."
