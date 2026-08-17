@@ -26,7 +26,15 @@ jobs:
     steps:
       - name: Probe candidate RENNS/INSPIRE endpoints
         run: |
-          set -uo pipefail
+          # GitHub Actions runs `run:` steps as `bash -e {0}` by default —
+          # `set -uo pipefail` alone does not undo that inherited -e. Without
+          # explicitly turning it back off, the first unreachable/erroring
+          # probe (e.g. a DNS failure) aborts the whole step instead of being
+          # reported and moved past, defeating the point of this script
+          # (confirmed: renns.ancpi.ro's DNS failure did exactly this before
+          # this fix — curl exit 6, step failed after only the first URL).
+          set +e
+          set -u
 
           probe() {
             local label="$1" url="$2"
