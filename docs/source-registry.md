@@ -47,6 +47,22 @@ Licența `CC BY 4.0` a fost confirmată direct din câmpul `licenseInfo` al item
 
 34 din cele 3.186 poligoane publicate de ANCPI (confirmat direct contra producției, `gis.ST_IsValid`) sunt geometric invalide (auto-intersecții) — un defect al sursei înseși, nu al pipeline-ului de achiziție, care le stochează neschimbate (`geometry_kind: source`). `scripts/correct-source-geometries.mjs` scrie o corecție tehnică separată (`geometry_kind: source_corrected`, `gis.ST_MakeValid`) fără să înlocuiască rândul original — corecția e etichetată explicit ca atare, nu prezentată drept geometria neschimbată a ANCPI (vezi `docs/public-contract-v1.md`).
 
+## RENNS — Registrul Electronic Național al Nomenclaturii Stradale (verificat, neînregistrat ca sursă)
+
+- Instituție: Agenția Națională de Cadastru și Publicitate Imobiliară (ANCPI), temei HG nr. 777/2016
+- Rol candidat: componenta națională existentă pe care propunerea legislativă (`docs/adr/0004-conditional-address-registry-extension.md`) cere să fie valorificată pentru registrul de adresare — nomenclator stradal, identificator CUA (Cod Unic de Adresă)
+
+**Nu e înregistrată mai jos ca sursă activă** — verificare directă (`.github/workflows/discover-renns-access.yml`, rulat de două ori dintr-un runner GitHub Actions, 2026-08-17 și 2026-08-18) nu a găsit niciun mecanism de acces programatic funcțional:
+
+| Endpoint candidat | Rezultat |
+|---|---|
+| `renns.ancpi.ro` (portal + aplicație de consultare) | nu se rezolvă în DNS public |
+| `ancpi.ro/en/renns/` | HTTP 404 |
+| `geoportal.gov.ro` (metadata INSPIRE) | timeout la conectare |
+| Record INSPIRE UE „Adrese RENNS” | redirect (301) doar către pagina generică `data.europa.eu`, nu spre conținut RENNS |
+
+Textele descoperite prin căutare web (servicii WSDL/XML, integrare INSPIRE) fie descriu o arhitectură nemaiexpusă public, fie una accesibilă doar unor consumatori instituționali desemnați explicit, nu descoperibilă anonim. Fail-closed: nicio schemă de adresare nu se ingerează cu date reale până la un răspuns direct de la ANCPI (`renns@ancpi.ro`) care confirmă un mecanism real de acces pentru consumatori ca Teritoriu.digital.
+
 ## Surse viitoare
 
 Eurostat/GISCO, actele normative și alte nomenclatoare se adaugă numai după documentarea instituției, rolului, licenței, frecvenței, identificatorilor, limitărilor și regulilor de transformare.

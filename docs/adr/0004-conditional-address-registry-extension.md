@@ -34,3 +34,15 @@ Teritoriu.digital își extinde domeniul declarat pentru a acoperi și registrul
 - `docs/roadmap.md` capătă un milestone nou (M13) pentru registrul de adresare, cu poarta explicită „nicio ingestie fără sursă RENNS verificată”.
 - `README.md` (secțiunea „Domeniu”) trebuie rescrisă pentru a reflecta extinderea condiționată, nu excluderea absolută.
 - Următorul pas tehnic real nu este o migrație de schemă, ci verificarea directă a accesului la date RENNS (contact ANCPI sau endpoint INSPIRE), documentată în `docs/source-registry.md` exact ca orice altă sursă — înainte de orice cod.
+
+## Verificare directă (2026-08-17/18) — actualizare
+
+Verificarea promisă mai sus s-a făcut real, nu presupus: `.github/workflows/discover-renns-access.yml`, rulat de două ori dintr-un runner GitHub Actions (rețea neblocată, spre deosebire de sandbox-ul interactiv de dezvoltare) contra celor 5 endpoint-uri candidate identificate prin căutare web. Rezultatul contrazice acea căutare:
+
+- `renns.ancpi.ro` — **nu se rezolvă în DNS public**, confirmat identic în ambele rulări, în zile diferite (`curl: Could not resolve host`).
+- `ancpi.ro/en/renns/` — HTTP 404.
+- `ancpi.ro` (rădăcină) — răspunde 200, dar conținutul e un anunț temporar despre supraîncărcarea aplicației e-Terra (cadastru), fără nicio legătură cu RENNS.
+- `geoportal.gov.ro` (metadata INSPIRE) — timeout la conectare (20s).
+- Record-ul INSPIRE de pe geoportalul UE pentru „Adrese RENNS” — redirecționează (301, urmărit cu `-L`), dar doar către pagina generică de start a `data.europa.eu`, nu către conținut specific RENNS; ID-ul de record pare să nu mai existe.
+
+**Concluzie**: la 2026-08-18, nu există niciun mecanism de acces programatic la datele RENNS confirmat funcțional. Textele găsite prin căutare web (WSDL/XML, servicii INSPIRE) descriu fie o arhitectură care nu (mai) e expusă public, fie una accesibilă doar unor consumatori instituționali autorizați explicit, nu descoperibilă anonim. Asta **nu** invalidează decizia acestui ADR — confirmă exact scenariul pentru care a fost proiectată poarta fail-closed de la punctul 3 al „Deciziei”: nicio schemă de adresare nu se ingerează cu date reale. Pasul următor rămas e unul uman, nu tehnic: contact direct cu ANCPI (`renns@ancpi.ro`) pentru a întreba explicit dacă există un mecanism de acces programatic pentru consumatori ca Teritoriu.digital — verificarea automată s-a epuizat cu rezultat negativ.
