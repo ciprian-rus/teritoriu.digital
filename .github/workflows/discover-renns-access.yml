@@ -41,7 +41,7 @@ jobs:
             echo "=== ${label} ==="
             echo "URL: ${url}"
             local headers
-            headers="$(curl -sS -m 20 -o /tmp/probe-body -D - \
+            headers="$(curl -sS -m 20 -L --max-redirs 5 -o /tmp/probe-body -D - \
               -A "teritoriu.digital-discovery/1.0 (+https://github.com/ciprian-rus/teritoriu.digital)" \
               "${url}" 2>&1)"
             local exit_code=$?
@@ -49,20 +49,27 @@ jobs:
               echo "UNREACHABLE (curl exit ${exit_code})"
               echo "${headers}"
             else
-              echo "${headers}" | head -n 5
-              echo "--- body (first 1000 bytes) ---"
-              head -c 1000 /tmp/probe-body
+              echo "${headers}"
+              echo "--- body (first 4000 bytes) ---"
+              head -c 4000 /tmp/probe-body
               echo
             fi
             echo
           }
 
+          # First real run (2026-08-17, run 32029456272) found: renns.ancpi.ro
+          # does not resolve in public DNS at all (curl exit 6, both probes);
+          # ancpi.ro/en/renns/ responds but 404s (page moved/renamed since
+          # the web search that surfaced this URL); geoportal.gov.ro timed
+          # out; the EU INSPIRE record was the only live lead — a 301 to
+          # data.europa.eu, not followed at the time. -L now follows it.
           probe "RENNS portal (root)" "https://renns.ancpi.ro/"
           probe "RENNS public consultation app" "http://renns.ancpi.ro/renns-public/"
           probe "ANCPI RENNS info page" "https://www.ancpi.ro/en/renns/"
+          probe "ANCPI site root" "https://www.ancpi.ro/"
           probe "geoportal.gov.ro INSPIRE metadata item (Adrese RENNS)" \
             "http://geoportal.gov.ro/metadata_catalog/rest/metadata/item/8ea8f0d32cb04150a716f1e79bb27cef/html"
-          probe "EU INSPIRE Geoportal record (Adrese RENNS)" \
+          probe "EU INSPIRE Geoportal record (Adrese RENNS), following redirects" \
             "https://inspire-geoportal.ec.europa.eu/srv/api/records/%7BAA3A39D5-B7D6-4297-8CB9-6BE9E470A1BE%7D?language=all"
 
           echo "Discovery complete. This job never fails on an unreachable endpoint —"
