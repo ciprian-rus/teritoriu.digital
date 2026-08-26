@@ -1,3 +1,5 @@
+import { safeMultiPolygonSql } from "./safe-geometry-sql.mjs";
+
 // ANCPI RELUAT never publishes a polygon for a county/București directly —
 // only for their UAT-level children (see write-geometries.mjs). This module
 // derives one by unioning those children's already-stored 'source' geometries.
@@ -36,19 +38,15 @@ const CANDIDATE_QUERY = `
     count(*)::int as expected_count,
     count(lg.territory_id)::int as actual_count,
     array_remove(array_agg(distinct lg.source_snapshot_id::text), null) as snapshot_ids,
-    -- The outer ST_MakeValid isn't redundant with the inner one: unioning
-    -- already-valid child polygons along shared borders can still produce a
-    -- self-intersecting or under-pointed result (a GEOS/float-precision
-    -- artifact, not a sign the inputs were bad) — confirmed in production,
-    -- where this was missing and left 31/42 derived counties ST_IsValid-false.
-    -- ST_MakeValid on a broken union can itself return a GEOMETRYCOLLECTION
-    -- (stray points/lines alongside the polygon, from the same defect) —
-    -- also confirmed in production, where inserting that collection into a
-    -- strictly-typed multipolygon column failed outright. ST_CollectionExtract
-    -- (type 3 = polygon) keeps only the polygonal parts before the final
-    -- ST_Multi; the dropped fragments are zero-area artifacts, not real area.
+    -- The outer safe-multipolygon wrap (safeMultiPolygonSql) isn't redundant
+    -- with the inner ST_MakeValid: unioning already-valid child polygons
+    -- along shared borders can still produce a self-intersecting or
+    -- under-pointed result (a GEOS/float-precision artifact, not a sign the
+    -- inputs were bad) — confirmed in production, where this was missing and
+    -- left 31/42 derived counties ST_IsValid-false. See safe-geometry-sql.mjs
+    -- for why the wrap itself (ST_MakeValid + ST_CollectionExtract) is needed.
     gis.ST_AsGeoJSON(
-      gis.ST_Multi(gis.ST_CollectionExtract(gis.ST_MakeValid(gis.ST_Union(gis.ST_MakeValid(lg.geometry))), 3))
+      ${safeMultiPolygonSql("gis.ST_Union(gis.ST_MakeValid(lg.geometry))")}
     ) as union_geojson
   from leaf_candidates lc
   left join latest_geometry lg on lg.territory_id = lc.territory_id
