@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import { AcquisitionError } from "../acquisition/errors.mjs";
 import { uuidV7 } from "../acquisition/uuid-v7.mjs";
+import { safeMultiPolygonSql } from "./safe-geometry-sql.mjs";
 
 export const SOURCE_VALIDITY_CORRECTION_METHOD = "st_makevalid_source_correction";
 
@@ -52,11 +53,17 @@ export async function readInvalidCurrentSourceGeometries(client) {
  * (README, "principii nenegociabile": corecțiile tehnice nu sunt prezentate
  * drept modificări ale sursei oficiale).
  *
- * ST_MakeValid + ST_CollectionExtract(..., 3) + ST_Multi on insert, same
- * GEOMETRYCOLLECTION guard as writeDerivedGeometries and for the same
- * reason: re-parsing GeoJSON can itself reintroduce a self-intersection
- * from coordinate precision loss, so the transform is re-applied at the
- * actual write boundary, not trusted from an earlier computation.
+ * The safe-multipolygon transform (safeMultiPolygonSql) runs exactly twice
+ * per row, matching the same "compute the real fix once, defensively
+ * re-apply at the write boundary" pattern writeDerivedGeometries already
+ * uses: once here, on the raw invalid input, to produce the corrected
+ * candidate (`corrected_geojson`); once more at insert, applied to that
+ * candidate rather than trusted as final — re-parsing GeoJSON can itself
+ * reintroduce a self-intersection from coordinate precision loss (confirmed
+ * against real production data for derived geometries). Applying the
+ * transform to an already-valid candidate a second time is a cheap no-op in
+ * the common case, not wasted work — it's the same safety net, not a
+ * redundant one.
  *
  * Fails closed per row: if the correction still isn't valid, that
  * territory is reported in `stillInvalid` and nothing is written for it —
@@ -71,13 +78,13 @@ export async function writeSourceCorrections(client, rows, options = {}) {
     for (const row of rows) {
       const geometryJson = JSON.stringify(row.geometry);
       const check = await client.query(
-        `select
-           gis.ST_IsValid(
-             gis.ST_Multi(gis.ST_CollectionExtract(gis.ST_MakeValid(gis.ST_GeomFromGeoJSON($1)), 3))
-           ) as is_valid,
-           gis.ST_AsGeoJSON(
-             gis.ST_Multi(gis.ST_CollectionExtract(gis.ST_MakeValid(gis.ST_GeomFromGeoJSON($1)), 3))
-           ) as corrected_geojson`,
+        `with corrected as (
+           select ${safeMultiPolygonSql("gis.ST_GeomFromGeoJSON($1)")} as geometry
+         )
+         select
+           gis.ST_IsValid(geometry) as is_valid,
+           gis.ST_AsGeoJSON(geometry) as corrected_geojson
+         from corrected`,
         [geometryJson]
       );
       if (!check.rows[0].is_valid) {
@@ -86,11 +93,9 @@ export async function writeSourceCorrections(client, rows, options = {}) {
       }
       // Hashes the corrected geometry actually being stored, not the
       // still-invalid original read from 'source' — geometry_sha256 must
-      // describe this row's own content. The insert below re-derives the
-      // identical geometry independently (same deterministic transform,
-      // same input) rather than trusting this computation, per the
-      // project's write-boundary discipline, so the two never diverge.
-      const geometrySha256 = createHash("sha256").update(check.rows[0].corrected_geojson).digest("hex");
+      // describe this row's own content.
+      const correctedGeojson = check.rows[0].corrected_geojson;
+      const geometrySha256 = createHash("sha256").update(correctedGeojson).digest("hex");
       await client.query(
         `insert into registry.territory_geometries (
            geometry_id, territory_id, geometry_kind, detail_level, geometry,
@@ -99,7 +104,7 @@ export async function writeSourceCorrections(client, rows, options = {}) {
          ) values (
            $1::uuid, $2::uuid, 'source_corrected', 'original',
            gis.ST_SetSRID(
-             gis.ST_Multi(gis.ST_CollectionExtract(gis.ST_MakeValid(gis.ST_GeomFromGeoJSON($3)), 3)),
+             ${safeMultiPolygonSql("gis.ST_GeomFromGeoJSON($3)")},
              4326
            ),
            'EPSG:4326', $4::uuid, $5, $6, $7, $8, current_date
@@ -107,7 +112,7 @@ export async function writeSourceCorrections(client, rows, options = {}) {
         [
           uuidV7(),
           row.territoryId,
-          geometryJson,
+          correctedGeojson,
           row.sourceSnapshotId,
           row.sourceFeatureKey,
           row.licenseSpdx,

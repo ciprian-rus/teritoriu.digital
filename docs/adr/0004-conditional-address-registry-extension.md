@@ -37,7 +37,7 @@ Teritoriu.digital își extinde domeniul declarat pentru a acoperi și registrul
 
 ## Verificare directă (2026-08-17/18) — actualizare
 
-Verificarea promisă mai sus s-a făcut real, nu presupus: `.github/workflows/discover-renns-access.yml`, rulat de două ori dintr-un runner GitHub Actions (rețea neblocată, spre deosebire de sandbox-ul interactiv de dezvoltare) contra celor 5 endpoint-uri candidate identificate prin căutare web. Rezultatul contrazice acea căutare:
+Verificarea promisă mai sus s-a făcut real, nu presupus: `.github/workflows/discover-renns-access.yml` (workflow de investigare unică, șters din `.github/workflows` după ce și-a atins scopul — rezultatul rămâne permanent aici, nu doar în istoricul git), rulat de două ori dintr-un runner GitHub Actions (rețea neblocată, spre deosebire de sandbox-ul interactiv de dezvoltare) contra celor 5 endpoint-uri candidate identificate prin căutare web. Rezultatul contrazice acea căutare:
 
 - `renns.ancpi.ro` — **nu se rezolvă în DNS public**, confirmat identic în ambele rulări, în zile diferite (`curl: Could not resolve host`).
 - `ancpi.ro/en/renns/` — HTTP 404.

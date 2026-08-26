@@ -55,6 +55,13 @@ test("writeGeometries fails closed and writes nothing when below the expected mi
   assert.equal(client.calls.length, 0);
 });
 
+test("writeGeometries fails closed and writes nothing when the same territoryId appears twice in the batch", async () => {
+  const client = clientMock();
+  const rows = [matchedRow({ sourceFeatureKey: "42" }), matchedRow({ sourceFeatureKey: "99" })];
+  await assert.rejects(writeGeometries(client, "snap-1", rows), { code: "DUPLICATE_TERRITORY_IN_BATCH" });
+  assert.equal(client.calls.length, 0);
+});
+
 test("writeGeometries inserts one row per match plus an audit event, then commits", async () => {
   const client = clientMock();
   const rows = [matchedRow(), matchedRow({ territoryId: "019f8e0f-4c42-70e7-8cc8-6bc449d622f7", sourceFeatureKey: "43" })];

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import { AcquisitionError } from "../acquisition/errors.mjs";
 import { uuidV7 } from "../acquisition/uuid-v7.mjs";
+import { safeMultiPolygonSql } from "./safe-geometry-sql.mjs";
 
 // Everything ANCPI RELUAT publishes a polygon for: județe/București at the
 // root, their UAT-uri, and București's sectoare (which sit one hop below
@@ -45,9 +46,13 @@ export async function readMatchableTerritories(client) {
  * snapshot; readers pick the most recent row per (territory_id,
  * geometry_kind, detail_level), the same "current view over an immutable
  * history" convention territory_revisions already uses. Fails closed
- * (rolls back, writes nothing) if fewer than minExpectedMatchedCount
- * territories matched, or if two features rows claim the same feature key
- * for the same territory more than once within this batch.
+ * (writes nothing) if fewer than minExpectedMatchedCount territories
+ * matched, or if the same territoryId appears more than once in the batch.
+ * matchFeaturesToTerritories already guarantees the latter (its output is
+ * deduplicated by territoryId, with real ambiguity reported separately as
+ * `conflicts`), but this function doesn't trust that upstream guarantee —
+ * it checks its own input, the same "don't trust the caller" discipline
+ * used throughout this codebase.
  */
 export async function writeGeometries(client, snapshotId, matchedRows, options = {}) {
   const minExpectedMatchedCount = options.minExpectedMatchedCount ?? 0;
@@ -56,6 +61,17 @@ export async function writeGeometries(client, snapshotId, matchedRows, options =
       "MATCHED_COUNT_TOO_LOW",
       `Only ${matchedRows.length} geometries matched, expected at least ${minExpectedMatchedCount}`
     );
+  }
+
+  const seenTerritoryIds = new Set();
+  for (const row of matchedRows) {
+    if (seenTerritoryIds.has(row.territoryId)) {
+      throw new AcquisitionError(
+        "DUPLICATE_TERRITORY_IN_BATCH",
+        `Territory ${row.territoryId} appears more than once in this batch`
+      );
+    }
+    seenTerritoryIds.add(row.territoryId);
   }
 
   await client.query("begin");
@@ -99,20 +115,14 @@ export async function writeGeometries(client, snapshotId, matchedRows, options =
  * derive-county-geometries.mjs). Same append-only convention as
  * writeGeometries: never updates a prior row in place.
  *
- * ST_MakeValid wraps ST_GeomFromGeoJSON here even though the SQL that
+ * safeMultiPolygonSql wraps ST_GeomFromGeoJSON here even though the SQL that
  * produced row.geometry already validated its own output: round-tripping
  * through GeoJSON text (ST_AsGeoJSON there, JSON here, ST_GeomFromGeoJSON
  * on the way back in) can itself reintroduce a self-intersection from
  * coordinate precision loss. Confirmed against real production data —
  * geometries that were valid going out came back invalid on the way in
- * without this wrap.
- *
- * ST_CollectionExtract(..., 3) (3 = polygon) follows it for the same reason
- * as in derive-county-geometries.mjs: ST_MakeValid on a broken input can
- * return a GEOMETRYCOLLECTION mixing stray points/lines with the polygon,
- * which the strictly-typed multipolygon column rejects outright — also
- * confirmed against real production data (the insert itself failed, not
- * just an ST_IsValid check afterward).
+ * without this wrap. See safe-geometry-sql.mjs for the GEOMETRYCOLLECTION
+ * guard this also provides.
  */
 export async function writeDerivedGeometries(client, rows, options = {}) {
   await client.query("begin");
@@ -128,7 +138,7 @@ export async function writeDerivedGeometries(client, rows, options = {}) {
          ) values (
            $1::uuid, $2::uuid, 'derived', 'original',
            gis.ST_SetSRID(
-             gis.ST_Multi(gis.ST_CollectionExtract(gis.ST_MakeValid(gis.ST_GeomFromGeoJSON($3)), 3)),
+             ${safeMultiPolygonSql("gis.ST_GeomFromGeoJSON($3)")},
              4326
            ),
            'EPSG:4326', $4::uuid, $5, $6, $7, current_date

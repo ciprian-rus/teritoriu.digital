@@ -102,6 +102,20 @@ test("writeSourceCorrections inserts one source_corrected row plus an audit even
   assert.ok(!statements.some((sql) => /delete from registry\.territory_geometries/i.test(sql)));
 });
 
+test("writeSourceCorrections computes the safe-multipolygon transform once per row in the validity check, not twice", async () => {
+  const client = clientMock({ isValidByCall: [true] });
+  await writeSourceCorrections(client, [invalidRow()]);
+  const checkSql = client.calls[1].sql;
+  // Regression guard: this query used to spell out
+  // ST_Multi(ST_CollectionExtract(ST_MakeValid(...), 3)) twice — once for
+  // is_valid, once for corrected_geojson — computing the same deterministic
+  // transform on the same input twice for no reason. A `with` CTE computes
+  // it once and both columns read from it.
+  assert.match(checkSql, /with corrected as/);
+  const makeValidCalls = checkSql.match(/ST_MakeValid/g) ?? [];
+  assert.equal(makeValidCalls.length, 1, "the check query should apply ST_MakeValid exactly once, via the CTE");
+});
+
 test("writeSourceCorrections defaults to the documented correction method", async () => {
   const client = clientMock({ isValidByCall: [true] });
   await writeSourceCorrections(client, [invalidRow()]);

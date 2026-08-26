@@ -52,7 +52,7 @@ Licența `CC BY 4.0` a fost confirmată direct din câmpul `licenseInfo` al item
 - Instituție: Agenția Națională de Cadastru și Publicitate Imobiliară (ANCPI), temei HG nr. 777/2016
 - Rol candidat: componenta națională existentă pe care propunerea legislativă (`docs/adr/0004-conditional-address-registry-extension.md`) cere să fie valorificată pentru registrul de adresare — nomenclator stradal, identificator CUA (Cod Unic de Adresă)
 
-**Nu e înregistrată mai jos ca sursă activă** — verificare directă (`.github/workflows/discover-renns-access.yml`, rulat de două ori dintr-un runner GitHub Actions, 2026-08-17 și 2026-08-18) nu a găsit niciun mecanism de acces programatic funcțional:
+**Nu e înregistrată mai jos ca sursă activă** — verificare directă (workflow de investigare unică `discover-renns-access.yml`, rulat de două ori dintr-un runner GitHub Actions, 2026-08-17 și 2026-08-18, șters ulterior din `.github/workflows` — și-a atins scopul, rezultatul rămâne aici) nu a găsit niciun mecanism de acces programatic funcțional:
 
 | Endpoint candidat | Rezultat |
 |---|---|
