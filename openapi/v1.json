@@ -3,7 +3,7 @@
   "info": {
     "title": "Teritoriu.digital API",
     "version": "1.0.0",
-    "description": "API public, versionat, construit exclusiv peste release-uri promovate. Fiecare răspuns provine dintr-un bundle verificat fail-closed (contract public v1); indisponibilitatea Supabase sau a surselor oficiale nu afectează răspunsurile. Nu există încă un domeniu de producție — acest document descrie contractul, nu un deployment live.",
+    "description": "API public, versionat, construit exclusiv peste release-uri promovate. Fiecare răspuns provine dintr-un bundle verificat fail-closed (contract public v1); indisponibilitatea Supabase sau a surselor oficiale nu afectează răspunsurile. Live la https://teritoriu.digital/api/v1.",
     "license": { "name": "AGPL-3.0-only", "url": "https://github.com/ciprian-rus/teritoriu.digital/blob/main/LICENSE" }
   },
   "paths": {
